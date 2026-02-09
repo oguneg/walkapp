@@ -17,7 +17,7 @@ public class StepDataHandler : MonoBehaviour
     
     public void OnConnectionEstablished()
     {
-        healthPlugin = FindFirstObjectByType<HealthConnectController>().healthPlugin;
+        healthPlugin = FindFirstObjectByType<HealthConnectController>().HealthPlugin;
         StartCoroutine(UpdateRoutine());
     }
 

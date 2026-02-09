@@ -2,32 +2,38 @@ apply plugin: 'com.android.library'
 apply from: '../shared/keepUnitySymbols.gradle'
 **APPLY_PLUGINS**
 
+// THE CONFLICT GUARD
+// This block ensures Unity accepts your modern plugin versions
+configurations.all {
+    resolutionStrategy {
+        // Force the same versions you used to build the .aar
+        force 'androidx.health.connect:connect-client:1.1.0-beta01'
+        force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.0'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+    }
+}
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     
-    // Google Health Connect
+    // Explicitly list the dependencies again to be 100% safe
     implementation 'androidx.health.connect:connect-client:1.1.0-beta01'
-    
-    // Kotlin Coroutines (Required for the plugin to run background tasks)
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3'
-    
-    // Core Android Libraries
-    implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
+
 **DEPS**}
 
 android {
     namespace "com.unity3d.player"
     ndkPath "**NDKPATH**"
     ndkVersion "**NDKVERSION**"
-
     compileSdk **APIVERSION**
     buildToolsVersion = "**BUILDTOOLS**"
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     defaultConfig {

@@ -8,43 +8,72 @@ public class HealthConnectController : MonoBehaviour
     // Drag a Text UI element here in the Inspector to see the results
     public TextMeshProUGUI statusText; 
 
-    public AndroidJavaObject healthPlugin;
+    public AndroidJavaObject HealthPlugin => _pluginInstance;
+
+    // WARNING: This string MUST match the 'package' line in your Kotlin file EXACTLY.
+    // + .HealthConnectManager (the class name)
+    private const string PLUGIN_CLASS_NAME = "com.ogunworks.walkapp.healthconnect.HealthConnectManager";
+
+    private AndroidJavaObject _pluginInstance;
 
     void Start()
     {
-        if (Application.platform == RuntimePlatform.Android)
-        {
-            try 
-            {
-                AndroidJavaClass pluginClass = new AndroidJavaClass("com.ogunworks.walkapp.healthconnect.HealthConnectManager");
-                healthPlugin = pluginClass.GetStatic<AndroidJavaObject>("instance");
-                healthPlugin.Call("initialize");
-                UpdateStatus("Plugin Initialized");
+        InitializePlugin();
+    }
 
-                // --- NEW CODE: Check & Request Permissions ---
-                bool hasPerms = healthPlugin.Call<bool>("hasPermissions");
-                if (hasPerms)
-                {
-                    UpdateStatus("Permissions: Granted");
-                }
-                else
-                {
-                    UpdateStatus("Asking for Permissions...");
-                    healthPlugin.Call("requestPermissions");
-                }
-                // ---------------------------------------------
-            }
-            catch (Exception e)
+    private void InitializePlugin()
+    {
+        // 1. Check Platform
+        if (Application.platform != RuntimePlatform.Android)
+        {
+            Debug.LogWarning("Health Connect only works on Android.");
+            return;
+        }
+
+        try
+        {
+            // 2. Instantiate the Plugin
+            // This looks for the class in your .aar file
+            _pluginInstance = new AndroidJavaObject(PLUGIN_CLASS_NAME);
+
+            if (_pluginInstance == null)
             {
-                UpdateStatus("Error init: " + e.Message);
+                Debug.LogError("FATAL: Plugin Instance is NULL. Check the Package Name!");
+                return;
             }
+
+            Debug.Log("Plugin Instance created successfully.");
+
+            // 3. Initialize the Kotlin side
+            // This calls the 'initialize()' function we wrote in Kotlin
+            _pluginInstance.Call("initialize");
+            
+            Debug.Log("Kotlin Initialize() called.");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("C# Error during Init: " + e.Message);
+            Debug.LogError("Did you update the Package Name in the C# script to match the Kotlin file?");
+        }
+    }
+
+    public void RequestPermissions()
+    {
+        if (_pluginInstance != null)
+        {
+            _pluginInstance.Call("requestPermissions");
+        }
+        else
+        {
+            Debug.LogError("Cannot request permissions: Plugin is null.");
         }
     }
 
     // Call this from a UI Button
     public void RequestStepsLast24Hours()
     {
-        if (healthPlugin == null) return;
+        if (_pluginInstance == null) return;
+        //healthPlugin.Call("requestPermissions");
         FindFirstObjectByType<StepDataHandler>().OnConnectionEstablished();
         // Calculate time in milliseconds
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
@@ -53,7 +82,7 @@ public class HealthConnectController : MonoBehaviour
         UpdateStatus("Requesting steps...");
 
         // Call the Kotlin function: getSteps(start, end, GameObjectName, CallbackMethodName)
-        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "OnStepsReceived");
+        _pluginInstance.Call("getSteps", startTime, endTime, this.gameObject.name, "OnStepsReceived");
     }
 
     // This function is called by Kotlin when data is ready

@@ -1,0 +1,5 @@
+-keep class androidx.health.connect.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+-keep class kotlin.coroutines.** { *; }
+-dontwarn androidx.health.connect.**
+-dontwarn kotlinx.coroutines.**
