@@ -75,6 +75,7 @@ public class HealthConnectController : MonoBehaviour
         if (_pluginInstance == null) return;
         //healthPlugin.Call("requestPermissions");
         FindFirstObjectByType<StepDataHandler>().OnConnectionEstablished();
+        FindFirstObjectByType<StepDisplayManager>().OnConnectionEstablished();
         // Calculate time in milliseconds
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         long startTime = DateTimeOffset.Now.AddHours(-24).ToUnixTimeMilliseconds();
