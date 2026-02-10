@@ -8,6 +8,7 @@ public class StepDataHandler : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI stepTextTotal,
         stepTextSession,
+        stepTextSession2,
         stepText30Mins,
         stepTextToday,
         stepTextYesterday,
@@ -15,6 +16,12 @@ public class StepDataHandler : MonoBehaviour
     
     private AndroidJavaObject healthPlugin;
     private long sessionStartTime;
+    
+    private float pollInterval = 1f; 
+    private float timer = 0f;
+
+    private long startSteps = 0;
+    private bool isInitialized = false;
 
     private void Start()
     {
@@ -24,7 +31,9 @@ public class StepDataHandler : MonoBehaviour
     public void OnConnectionEstablished()
     {
         healthPlugin = FindFirstObjectByType<HealthConnectController>().HealthPlugin;
+        InitializeBaseline();
         StartCoroutine(UpdateRoutine());
+        StartCoroutine(StepRoutine());
     }
 
     private IEnumerator UpdateRoutine()
@@ -34,6 +43,16 @@ public class StepDataHandler : MonoBehaviour
         {
             RequestAll();
             yield return wfs;
+        }
+    }
+    
+    private IEnumerator StepRoutine()
+    {
+        WaitForSeconds wfs = new WaitForSeconds(1f);
+        while (true)
+        {
+            yield return wfs;
+            FetchSteps();
         }
     }
     
@@ -149,5 +168,33 @@ public class StepDataHandler : MonoBehaviour
     public void OnTotalStepsReceived(string stepsCount)
     {
         stepTextTotal.text = stepsCount;
+    }
+    
+    void InitializeBaseline()
+    {
+        // Get the starting value (e.g., 12,000)
+        string rawVal = healthPlugin.Call<string>("getCurrentNativeSteps");
+        startSteps = long.Parse(rawVal);
+        isInitialized = true;
+    }
+    
+    void FetchSteps()
+    {
+        // 1. Poll the value
+        string rawVal = healthPlugin.Call<string>("getCurrentNativeSteps");
+        long currentSteps = long.Parse(rawVal);
+
+        // 2. Calculate Mission Progress (Delta)
+        long missionSteps = currentSteps - startSteps;
+
+        // 3. Handle Reboot (Prevent negatives)
+        if (missionSteps < 0) 
+        {
+            startSteps = 0; // Reset baseline
+            missionSteps = currentSteps;
+        }
+
+        // 4. Update UI
+        stepTextSession2.text = missionSteps.ToString();
     }
 }
