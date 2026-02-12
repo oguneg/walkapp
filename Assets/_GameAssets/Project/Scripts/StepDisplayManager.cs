@@ -13,7 +13,7 @@ public class StepDisplayManager : MonoBehaviour
     [Header("Dependencies")]
     // Assign your plugin wrapper here (or find it via Singleton)
     private AndroidJavaObject healthPlugin;
-
+    
     // --- STATE VARIABLES ---
     
     // 1. The Anchors (Trusted Data from Health Connect)
@@ -34,15 +34,37 @@ public class StepDisplayManager : MonoBehaviour
     private bool isInitialized = false;
     private float syncTimer = 0;
     private const float SYNC_INTERVAL = 15f; // Fetch HC every 10 mins (battery safe)
+    
+    private int currentDayOfYear = -1;
+
+    private void OnApplicationFocus(bool isFocus)
+    {
+        CheckForDayChange();
+    }
+
+    private void CheckForDayChange()
+    {
+        if (DateTime.Now.DayOfYear != currentDayOfYear)
+        {
+            ResetDay();
+        }
+    }
+
+    private void ResetDay()
+    {
+        currentDayOfYear = DateTime.Now.DayOfYear;
+        todayAnchor = 0;
+        sensorAtLastSync = currentSensorVal;
+        displayedToday = 0;
+    }
 
     void Initialize()
     {
         // 1. Get the initial hardware sensor reading immediately
         FetchLiveSensor();
         
-        // 2. Set the baseline to NOW (so we start with 0 delta)
-        sensorAtLastSync = currentSensorVal;
-
+        ResetDay();
+        
         // 3. Trigger the first Health Connect fetch
         RefreshHealthConnectData();
     }
@@ -118,18 +140,18 @@ public class StepDisplayManager : MonoBehaviour
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
         // Call Java: Get Today
-        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "OnTodayStepsRecieved");
+        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "OnTodayStepsReceived");
 
         // 2. Fetch Total (Lifetime / Long Range)
         // Note: You might want to store a "Base Total" in PlayerPrefs and only fetch 
         // "Today" to add to it, but here is how to fetch a long range (e.g., 1 year)
         long yearAgo = startOffset.AddYears(-1).ToUnixTimeMilliseconds();
-        healthPlugin.Call("getSteps", yearAgo, endTime, this.gameObject.name, "OnTotalStepsRecieved");
+        healthPlugin.Call("getSteps", yearAgo, endTime, this.gameObject.name, "OnTotalStepsReceived");
     }
 
     // --- CALLBACKS: Called from Java ---
 
-    public void OnTodayStepsRecieved(string steps)
+    public void OnTodayStepsReceived(string steps)
     {
         long newTodayAnchor = long.Parse(steps);
         
@@ -145,7 +167,7 @@ public class StepDisplayManager : MonoBehaviour
         sensorAtLastSync = currentSensorVal;
     }
 
-    public void OnTotalStepsRecieved(string steps)
+    public void OnTotalStepsReceived(string steps)
     {
         long newTotalAnchor = long.Parse(steps);
         
