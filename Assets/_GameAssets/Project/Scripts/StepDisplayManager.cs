@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 using TMPro;
 
-public class StepDisplayManager : MonoBehaviour
+public class StepDisplayManager : MonoSingleton<StepDisplayManager>
 {
     [Header("UI References")]
     public TextMeshProUGUI todayStepsText;
@@ -29,6 +29,7 @@ public class StepDisplayManager : MonoBehaviour
     // 4. The Ratchets (High-water marks to prevent dropping)
     private long displayedToday = 0;
     private long displayedTotal = 0;
+    private int cheatSteps = 0;
 
     // 5. System State
     private bool isInitialized = false;
@@ -37,9 +38,19 @@ public class StepDisplayManager : MonoBehaviour
     
     private int currentDayOfYear = -1;
 
+    public long currentTotalSteps => cheatSteps;
+
     private void OnApplicationFocus(bool isFocus)
     {
         CheckForDayChange();
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            cheatSteps += 15;
+        }
     }
 
     private void CheckForDayChange()
@@ -98,7 +109,7 @@ public class StepDisplayManager : MonoBehaviour
             long theoreticalTotal = totalAnchor + liveDelta;
 
             // Apply Ratchet (Never show a lower number than before)
-            if (theoreticalToday > displayedToday) displayedToday = theoreticalToday;
+            if (theoreticalToday > displayedToday) displayedToday = theoreticalToday + cheatSteps;
             if (theoreticalTotal > displayedTotal) displayedTotal = theoreticalTotal;
 
             // Update UI

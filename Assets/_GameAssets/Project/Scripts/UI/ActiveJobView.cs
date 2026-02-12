@@ -1,0 +1,134 @@
+using System;
+using System.Collections;
+using UnityEngine;
+using TMPro;
+using UnityEngine.Events;
+using UnityEngine.UI;
+
+namespace OgunWorks.UI
+{
+    public class ActiveJobView : MonoBehaviour
+    {
+        [SerializeField] private TextMeshProUGUI jobTypeText,
+            cargoTypeText,
+            distanceText,
+            stepsText,
+            timeText,
+            stepsLeftText,
+            timeLeftText;
+
+        public UnityAction<ActiveJobView, bool> OnJobResponse;
+        public ActiveJobSaveData assignedJob = null;
+        public bool isEmpty = true;
+        public Button claimButton;
+        private Coroutine progressRoutine;
+        long stepsLeft = 0;
+        long timeLeftInSeconds = 0;
+        [SerializeField] private Image stepProgressBar, timeProgressBar;
+
+        public void AssignJob(ActiveJobSaveData job)
+        {
+            assignedJob = job;
+            isEmpty = false;
+            jobTypeText.text = job.jobData.jobType.ToString();
+            cargoTypeText.text = job.jobData.cargoType.ToString();
+            distanceText.text = $"{job.jobData.distance}km";
+            stepsText.text = $"{job.jobData.steps:N0} steps";
+
+            int hours = job.jobData.timeInMinutes / 60;
+            int minutes = job.jobData.timeInMinutes % 60;
+            timeText.text = (hours > 0) ? $"{hours}:{minutes:00} hrs" : $"{minutes} min";
+
+            claimButton.interactable = false;
+            gameObject.SetActive(true);
+            assignedJob.state = JobState.Active;
+        }
+
+        private void OnEnable()
+        {
+            if (!isEmpty)
+            {
+                progressRoutine = StartCoroutine(UpdateProgress());
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (progressRoutine != null)
+            {
+                StopCoroutine(progressRoutine);
+            }
+        }
+
+        public IEnumerator UpdateProgress()
+        {
+            WaitForSeconds wfs = new WaitForSeconds(1f);
+            while (true)
+            {
+                CheckForCompletion();
+
+                UpdateStepsLeft();
+                UpdateTimeLeft();
+                yield return wfs;
+            }
+        }
+
+        private void UpdateStepsLeft()
+        {
+            stepsLeftText.text = $"{stepsLeft:N0} steps left";
+            stepProgressBar.fillAmount = 1f - stepsLeft * 1f / assignedJob.jobData.steps;
+        }
+
+        private void UpdateTimeLeft()
+        {
+            if (assignedJob.TimeRemainingSeconds < 0 && assignedJob.state != JobState.Claimable)
+            {
+                if (progressRoutine != null)
+                {
+                    StopCoroutine(progressRoutine);
+                }
+                timeProgressBar.fillAmount = 1;
+                timeLeftText.text = "Time Over - Job Failed";
+            }
+            else
+            {
+                timeProgressBar.fillAmount = 1f - (float)assignedJob.TimeRemainingSeconds / (assignedJob.jobData.timeInMinutes * 60);
+                timeLeftText.text = $"{FormatTimeRemaining(assignedJob.TimeRemainingSeconds)} until delivery";
+            }
+        }
+
+        private void CheckForCompletion()
+        {
+            stepsLeft = assignedJob.targetStepCount - StepDisplayManager.instance.currentTotalSteps;
+            if (stepsLeft <= 0)
+            {
+                stepsLeft = 0;
+                stepProgressBar.fillAmount = 1f;
+                assignedJob.state = JobState.Claimable;
+                claimButton.interactable = true;
+                StopCoroutine(progressRoutine);
+            }
+        }
+
+        public void OnResponseButton(bool isAccepted)
+        {
+            OnJobResponse?.Invoke(this, isAccepted);
+        }
+
+        public string FormatTimeRemaining(double timeInSeconds)
+        {
+            if (timeInSeconds < 0) timeInSeconds = 0;
+
+            TimeSpan t = TimeSpan.FromSeconds(timeInSeconds);
+            return string.Format("{0:00}:{1:00}", (int)t.TotalHours, t.Minutes);
+        }
+        
+        public void ClearJobView()
+        {
+            assignedJob = null;
+            StopAllCoroutines();
+            isEmpty = true;
+            gameObject.SetActive(false);
+        }
+    }
+}
