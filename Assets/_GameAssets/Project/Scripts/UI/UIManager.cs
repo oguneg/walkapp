@@ -19,6 +19,12 @@ public class UIManager : MonoSingleton<UIManager>
         {
             tabButton.OnButtonClicked += OnTabButtonClicked;
         }
+
+        foreach (var tab in tabs)
+        {
+            tab.Deactivate();
+        }
+        
         OnTabButtonClicked(tabButtons[2]);
     }
 

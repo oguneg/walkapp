@@ -38,7 +38,7 @@ public class StepDisplayManager : MonoSingleton<StepDisplayManager>
     
     private int currentDayOfYear = -1;
 
-    public long currentTotalSteps => cheatSteps;
+    public long currentTotalSteps => displayedTotal + cheatSteps;
 
     private void OnApplicationFocus(bool isFocus)
     {
