@@ -48,6 +48,8 @@ public class HealthConnectController : MonoBehaviour
             // This calls the 'initialize()' function we wrote in Kotlin
             _pluginInstance.Call("initialize");
             
+            OnConnectionEstablished();
+            
             Debug.Log("Kotlin Initialize() called.");
         }
         catch (System.Exception e)
@@ -55,6 +57,13 @@ public class HealthConnectController : MonoBehaviour
             Debug.LogError("C# Error during Init: " + e.Message);
             Debug.LogError("Did you update the Package Name in the C# script to match the Kotlin file?");
         }
+    }
+
+    private void OnConnectionEstablished()
+    {
+        RequestPermissions();
+        FindFirstObjectByType<StepDataHandler>().OnConnectionEstablished();
+        FindFirstObjectByType<StepDisplayManager>().OnConnectionEstablished();
     }
 
     public void RequestPermissions()
@@ -74,8 +83,7 @@ public class HealthConnectController : MonoBehaviour
     {
         if (_pluginInstance == null) return;
         //healthPlugin.Call("requestPermissions");
-        FindFirstObjectByType<StepDataHandler>().OnConnectionEstablished();
-        FindFirstObjectByType<StepDisplayManager>().OnConnectionEstablished();
+
         // Calculate time in milliseconds
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         long startTime = DateTimeOffset.Now.AddHours(-24).ToUnixTimeMilliseconds();

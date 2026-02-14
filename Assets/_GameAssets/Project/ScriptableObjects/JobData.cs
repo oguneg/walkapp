@@ -22,5 +22,5 @@ public enum CargoType
 
 public enum JobState
 {
-    None, Active, Claimable, Failed
+    None, Active, Claimable, TimeOver, Failed
 }

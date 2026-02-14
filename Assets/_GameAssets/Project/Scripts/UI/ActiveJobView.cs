@@ -65,10 +65,13 @@ namespace OgunWorks.UI
             WaitForSeconds wfs = new WaitForSeconds(1f);
             while (true)
             {
-                CheckForCompletion();
+                if (assignedJob.state == JobState.Active)
+                {
+                    UpdateStepsLeft();
+                    UpdateTimeLeft();
+                    CheckForCompletion();
+                }
 
-                UpdateStepsLeft();
-                UpdateTimeLeft();
                 yield return wfs;
             }
         }
@@ -87,13 +90,31 @@ namespace OgunWorks.UI
                 {
                     StopCoroutine(progressRoutine);
                 }
+
                 timeProgressBar.fillAmount = 1;
                 timeLeftText.text = "Time Over - Job Failed";
+                assignedJob.state = JobState.TimeOver;
+                OnTimeOver();
             }
             else
             {
-                timeProgressBar.fillAmount = 1f - (float)assignedJob.TimeRemainingSeconds / (assignedJob.jobData.timeInMinutes * 60);
+                timeProgressBar.fillAmount =
+                    1f - (float)assignedJob.TimeRemainingSeconds / (assignedJob.jobData.timeInMinutes * 60);
                 timeLeftText.text = $"{FormatTimeRemaining(assignedJob.TimeRemainingSeconds)} until delivery";
+            }
+        }
+
+        private void OnTimeOver()
+        {
+            StepDisplayManager.instance.GetStepsInTimePeriod(assignedJob.AcceptTime, assignedJob.DeadlineTime,
+                TimeOverResponse);
+        }
+
+        private void TimeOverResponse(int steps)
+        {
+            if (steps >= assignedJob.jobData.steps)
+            {
+                CompleteJob();
             }
         }
 
@@ -104,8 +125,16 @@ namespace OgunWorks.UI
             {
                 stepsLeft = 0;
                 stepProgressBar.fillAmount = 1f;
-                assignedJob.state = JobState.Claimable;
-                claimButton.interactable = true;
+                CompleteJob();
+            }
+        }
+
+        private void CompleteJob()
+        {
+            assignedJob.state = JobState.Claimable;
+            claimButton.interactable = true;
+            if (progressRoutine != null)
+            {
                 StopCoroutine(progressRoutine);
             }
         }
@@ -122,7 +151,7 @@ namespace OgunWorks.UI
             TimeSpan t = TimeSpan.FromSeconds(timeInSeconds);
             return string.Format("{0:00}:{1:00}", (int)t.TotalHours, t.Minutes);
         }
-        
+
         public void ClearJobView()
         {
             assignedJob = null;

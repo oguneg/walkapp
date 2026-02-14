@@ -38,11 +38,12 @@ public class StepDisplayManager : MonoSingleton<StepDisplayManager>
     
     private int currentDayOfYear = -1;
 
-    public long currentTotalSteps => displayedTotal + cheatSteps;
+    public long currentTotalSteps => displayedTotal;
 
     private void OnApplicationFocus(bool isFocus)
     {
         CheckForDayChange();
+        RefreshHealthConnectData();
     }
 
     private void Update()
@@ -109,7 +110,7 @@ public class StepDisplayManager : MonoSingleton<StepDisplayManager>
             long theoreticalTotal = totalAnchor + liveDelta;
 
             // Apply Ratchet (Never show a lower number than before)
-            if (theoreticalToday > displayedToday) displayedToday = theoreticalToday + cheatSteps;
+            if (theoreticalToday > displayedToday) displayedToday = theoreticalToday;
             if (theoreticalTotal > displayedTotal) displayedTotal = theoreticalTotal;
 
             // Update UI
@@ -151,16 +152,34 @@ public class StepDisplayManager : MonoSingleton<StepDisplayManager>
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
         // Call Java: Get Today
-        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "OnTodayStepsReceived");
+        healthPlugin.Call("getSteps", startTime, endTime, gameObject.name, "OnTodayStepsReceived");
 
         // 2. Fetch Total (Lifetime / Long Range)
         // Note: You might want to store a "Base Total" in PlayerPrefs and only fetch 
         // "Today" to add to it, but here is how to fetch a long range (e.g., 1 year)
         long yearAgo = startOffset.AddYears(-1).ToUnixTimeMilliseconds();
-        healthPlugin.Call("getSteps", yearAgo, endTime, this.gameObject.name, "OnTotalStepsReceived");
+        healthPlugin.Call("getSteps", yearAgo, endTime, gameObject.name, "OnTotalStepsReceived");
     }
 
-    // --- CALLBACKS: Called from Java ---
+    private Action<int> _onStepsReceivedCallback;
+
+    public void GetStepsInTimePeriod(DateTime start, DateTime end, Action<int> onResult)
+    {
+        _onStepsReceivedCallback = onResult;
+
+        long startTime = new DateTimeOffset(start).ToUnixTimeMilliseconds();
+        long endTime = new DateTimeOffset(end).ToUnixTimeMilliseconds();
+
+        healthPlugin.Call("getSteps", startTime, endTime, "OnPeriodStepsReceived");
+    }
+
+    public void OnPeriodStepsReceived(string stepCountString)
+    {
+        int steps = int.Parse(stepCountString);
+    
+        _onStepsReceivedCallback?.Invoke(steps);
+        _onStepsReceivedCallback = null; // Clean up
+    }
 
     public void OnTodayStepsReceived(string steps)
     {
