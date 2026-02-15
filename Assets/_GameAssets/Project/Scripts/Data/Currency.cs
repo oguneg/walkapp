@@ -8,6 +8,11 @@ public class Currency : ScriptableObject
     public string SaveKey; 
     public bool hasCap = false;
     public int initialCap = 100;
+    
+    [Header("Offline Regen")]
+    public bool regenerateOffline;
+    public long regenRate;
+    public int regenIntervalInSeconds;
 }
 
 public enum CurrencyType

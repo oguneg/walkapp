@@ -133,7 +133,7 @@ namespace OgunWorks.UI
 
         private void FailJob()
         {
-            //assignedJob.state = JobState.Failed;
+            assignedJob.state = JobState.Failed;
             Debug.Log("job  dummy failed");
         }
 

@@ -6,13 +6,13 @@ using UnityEngine;
 
 public class JobListView : MonoBehaviour
 {
-    [SerializeField] private List<JobOfferView>  jobOfferViews;
-    
+    [SerializeField] private List<JobOfferView> jobOfferViews;
+
     private void Awake()
     {
         foreach (var element in jobOfferViews)
         {
-            element.OnJobResponse+= OnJobResponse;
+            element.OnJobResponse += OnJobResponse;
         }
     }
 
@@ -20,7 +20,11 @@ public class JobListView : MonoBehaviour
     {
         if (isAccepted)
         {
-            OnJobAccepted(jobOfferView);
+            if (CurrencyManager.instance.CanAfford(CurrencyType.Fuel, jobOfferView.assignedJob.fuelCost))
+            {
+                CurrencyManager.instance.AddCurrency(CurrencyType.Fuel, -jobOfferView.assignedJob.fuelCost);
+                OnJobAccepted(jobOfferView);
+            }
         }
         else
         {

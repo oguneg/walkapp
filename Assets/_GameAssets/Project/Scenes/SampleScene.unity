@@ -157,13 +157,13 @@ MonoBehaviour:
       distance: 0
       steps: 0
       timeInMinutes: 0
+      fuelCost: 0
+      reward: 0
     state: 0
     acceptTimestamp: 0
     deadlineTimestamp: 0
     stepCountAtStart: 0
     targetStepCount: 0
-    fuelCost: 0
-    reward: 0
     isValid: 0
   completedJobCount: 0
 --- !u!4 &224539044
