@@ -1,18 +1,24 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
-public class CurrencyManager : MonoBehaviour
+public class CurrencyManager : MonoSingleton<CurrencyManager>
 {
     public Currency[] currencies;
     private Dictionary<CurrencyType, long> currencyAmounts = new Dictionary<CurrencyType, long>();
-
+    public UnityAction<CurrencyType, long> OnCurrencyAmountChanged;
+    
     private void Awake()
     {
         foreach (Currency currency in currencies)
         {
             currencyAmounts.Add(currency.CurrencyType, 0);
         }
+    }
+
+    private void Start()
+    {
         LoadCurrencies();
     }
 
@@ -29,13 +35,13 @@ public class CurrencyManager : MonoBehaviour
             currencyAmounts[currencyType] =
                 Math.Clamp(currencyAmounts[currencyType], 0, currencies[(int)currencyType].initialCap);
         }
+        OnCurrencyAmountChanged?.Invoke(currencyType, currencyAmounts[currencyType]);
     }
 
     private void SaveCurrencies()
     {
         foreach (Currency currency in currencies)
         {
-            currencyAmounts.Add(currency.CurrencyType, 0);
             PlayerPrefsX.SetLong(currency.SaveKey, currencyAmounts[currency.CurrencyType]);
         }
     }
@@ -44,8 +50,8 @@ public class CurrencyManager : MonoBehaviour
     {
         foreach (Currency currency in currencies)
         {
-            currencyAmounts.Add(currency.CurrencyType, 0);
             currencyAmounts[currency.CurrencyType] = PlayerPrefsX.GetLong(currency.SaveKey, 0);
+            OnCurrencyAmountChanged?.Invoke(currency.CurrencyType, currencyAmounts[currency.CurrencyType]);
         }
     }
     

@@ -15,6 +15,8 @@ namespace OgunWorks.UI
             stepsText,
             timeText,
             stepsLeftText,
+            fuelCostText,
+            rewardText,
             timeLeftText;
 
         public UnityAction<ActiveJobView, bool> OnJobResponse;
@@ -34,6 +36,8 @@ namespace OgunWorks.UI
             cargoTypeText.text = job.jobData.cargoType.ToString();
             distanceText.text = $"{job.jobData.distance}km";
             stepsText.text = $"{job.jobData.steps:N0} steps";
+            fuelCostText.text = $"{job.jobData.fuelCost / 1000} fuel";
+            rewardText.text = $"${job.jobData.reward:N0}";
 
             int hours = job.jobData.timeInMinutes / 60;
             int minutes = job.jobData.timeInMinutes % 60;

@@ -20,7 +20,7 @@ public class JobManager : MonoSingleton<JobManager>
         while (true)
         {
             CreateJob();
-            yield return new WaitForSeconds(5);
+            yield return new WaitForSeconds(5f);
         }
     }
 
@@ -47,7 +47,10 @@ public class JobManager : MonoSingleton<JobManager>
                 job.timeInMinutes = Random.Range(3,12) * 180;
                 break;
         }
-        //availableJobs.Add(job);
+
+        job.fuelCost = job.distance * 10 * Random.Range(10, 15);
+        job.reward = job.distance * Random.Range(10,15) / 3;
+        
         UIManager.instance.AddJob(job);
     }
 
@@ -69,6 +72,7 @@ public class JobManager : MonoSingleton<JobManager>
         if (isSuccess)
         {
             completedJobCount++;
+            CurrencyManager.instance.AddCurrency(CurrencyType.Coin, activeJob.jobData.reward);
             UIManager.instance.UpdateCompletedJobCount(completedJobCount);
         }
         

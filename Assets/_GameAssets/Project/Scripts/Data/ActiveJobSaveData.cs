@@ -11,7 +11,7 @@ public class ActiveJobSaveData
     public long deadlineTimestamp;
     public long stepCountAtStart;
     public long targetStepCount;
-    
+
     public bool isValid = false; 
 
     // Constructor to easily create a new active job

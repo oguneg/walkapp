@@ -7,7 +7,7 @@ namespace OgunWorks.UI
 {
     public class JobOfferView : MonoBehaviour
     {
-        [SerializeField] private TextMeshProUGUI jobTypeText, cargoTypeText, distanceText, stepsText, timeText;
+        [SerializeField] private TextMeshProUGUI jobTypeText, cargoTypeText, distanceText, stepsText, timeText, costText, rewardText;
         public UnityAction<JobOfferView, bool> OnJobResponse;
         public JobData assignedJob = null;
         public bool isEmpty = true;
@@ -18,6 +18,8 @@ namespace OgunWorks.UI
             isEmpty = false;
             jobTypeText.text = job.jobType.ToString();
             cargoTypeText.text = job.cargoType.ToString();
+            costText.text = $"{job.fuelCost / 1000} fuel";
+            rewardText.text = $"${job.reward:N0}";
             distanceText.text = $"{job.distance}km";
             stepsText.text = $"{job.steps:N0} steps";
             

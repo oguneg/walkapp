@@ -72,7 +72,7 @@ public class StepDataHandler : MonoBehaviour
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         long startTime = DateTimeOffset.Now.AddYears(-10).ToUnixTimeMilliseconds();
 
-        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "OnTotalStepsReceived");
+        healthPlugin?.Call("getSteps", startTime, endTime, this.gameObject.name, "OnTotalStepsReceived");
     }
     
     public void RequestStepsToday()
@@ -90,7 +90,7 @@ public class StepDataHandler : MonoBehaviour
 
         Debug.Log($"Requesting Today: {startTime} to {endTime} (Offset: {currentOffset.TotalHours})");
 
-        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "OnTodayStepsReceived");
+        healthPlugin?.Call("getSteps", startTime, endTime, this.gameObject.name, "OnTodayStepsReceived");
     }
     
     public void RequestStepsLastWeek()
@@ -106,7 +106,7 @@ public class StepDataHandler : MonoBehaviour
         // End time is still "Right Now"
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
-        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "OnWeeklyStepsReceived");
+        healthPlugin?.Call("getSteps", startTime, endTime, this.gameObject.name, "OnWeeklyStepsReceived");
     }
     
     public void RequestStepsYesterday()
@@ -122,7 +122,7 @@ public class StepDataHandler : MonoBehaviour
         // End time is still "Right Now"
         long startTime = new DateTimeOffset(startOfDay).AddDays(-1).ToUnixTimeMilliseconds();
 
-        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "OnYesterdayStepsReceived");
+        healthPlugin?.Call("getSteps", startTime, endTime, this.gameObject.name, "OnYesterdayStepsReceived");
     }
     
     public void RequestStepsLast30Minutes()
@@ -130,14 +130,14 @@ public class StepDataHandler : MonoBehaviour
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         long startTime = DateTimeOffset.Now.AddMinutes(-30).ToUnixTimeMilliseconds();
 
-        healthPlugin.Call("getSteps", startTime, endTime, this.gameObject.name, "On30MinuteStepsReceived");
+        healthPlugin?.Call("getSteps", startTime, endTime, this.gameObject.name, "On30MinuteStepsReceived");
     }
     
     public void RequestStepsSession()
     {
         long endTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
-        healthPlugin.Call("getSteps", sessionStartTime, endTime, this.gameObject.name, "OnSessionStepsReceived");
+        healthPlugin?.Call("getSteps", sessionStartTime, endTime, this.gameObject.name, "OnSessionStepsReceived");
     }
 
     public void On30MinuteStepsReceived(string stepsCount)
@@ -173,7 +173,7 @@ public class StepDataHandler : MonoBehaviour
     void InitializeBaseline()
     {
         // Get the starting value (e.g., 12,000)
-        string rawVal = healthPlugin.Call<string>("getCurrentNativeSteps");
+        string rawVal = healthPlugin?.Call<string>("getCurrentNativeSteps");
         startSteps = long.Parse(rawVal);
         isInitialized = true;
     }
@@ -181,7 +181,7 @@ public class StepDataHandler : MonoBehaviour
     void FetchSteps()
     {
         // 1. Poll the value
-        string rawVal = healthPlugin.Call<string>("getCurrentNativeSteps");
+        string rawVal = healthPlugin?.Call<string>("getCurrentNativeSteps");
         long currentSteps = long.Parse(rawVal);
 
         // 2. Calculate Mission Progress (Delta)
