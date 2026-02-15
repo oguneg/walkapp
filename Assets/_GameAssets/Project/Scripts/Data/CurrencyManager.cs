@@ -15,6 +15,9 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     private Dictionary<CurrencyType, float> activeRegenTimers = new Dictionary<CurrencyType, float>();
 
     public UnityAction<CurrencyType, long> OnCurrencyAmountChanged;
+
+    public long GetFuelCap => currencies[(int)CurrencyType.Fuel].initialCap;
+    
     private const string LAST_SESSION_TIME_KEY = "LastSessionTime_UTC";
 
     private void Awake()

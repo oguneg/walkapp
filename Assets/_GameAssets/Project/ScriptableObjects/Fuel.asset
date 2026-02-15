@@ -16,7 +16,7 @@ MonoBehaviour:
   name: Fuel
   SaveKey: fuel
   hasCap: 1
-  initialCap: 100000
+  initialCap: 1000000
   regenerateOffline: 1
   regenRate: 1000
   regenIntervalInSeconds: 10
