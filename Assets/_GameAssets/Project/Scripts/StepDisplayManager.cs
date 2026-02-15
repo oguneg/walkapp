@@ -170,7 +170,7 @@ public class StepDisplayManager : MonoSingleton<StepDisplayManager>
         long startTime = new DateTimeOffset(start).ToUnixTimeMilliseconds();
         long endTime = new DateTimeOffset(end).ToUnixTimeMilliseconds();
 
-        healthPlugin.Call("getSteps", startTime, endTime, "OnPeriodStepsReceived");
+        healthPlugin.Call("getSteps", startTime, endTime, gameObject.name, "OnPeriodStepsReceived");
     }
 
     public void OnPeriodStepsReceived(string stepCountString)

@@ -59,6 +59,19 @@ namespace OgunWorks.UI
                 StopCoroutine(progressRoutine);
             }
         }
+        
+                
+        void OnApplicationPause(bool paused)
+        {
+            if (!paused)
+            {
+                UpdateTimeLeft();
+                if (assignedJob.state == JobState.TimeOver)
+                {
+                    OnTimeOver();
+                }
+            }
+        }
 
         public IEnumerator UpdateProgress()
         {
@@ -94,6 +107,8 @@ namespace OgunWorks.UI
                 timeProgressBar.fillAmount = 1;
                 timeLeftText.text = "Time Over - Job Failed";
                 assignedJob.state = JobState.TimeOver;
+                Debug.Log($"time over");
+
                 OnTimeOver();
             }
             else
@@ -106,15 +121,28 @@ namespace OgunWorks.UI
 
         private void OnTimeOver()
         {
+            Debug.Log($"time over - querying steps");
+
             StepDisplayManager.instance.GetStepsInTimePeriod(assignedJob.AcceptTime, assignedJob.DeadlineTime,
                 TimeOverResponse);
         }
 
+        private void FailJob()
+        {
+            //assignedJob.state = JobState.Failed;
+            Debug.Log("job  dummy failed");
+        }
+
         private void TimeOverResponse(int steps)
         {
+            Debug.Log($"{steps} steps taken between {assignedJob.AcceptTime} - {assignedJob.DeadlineTime}");
             if (steps >= assignedJob.jobData.steps)
             {
                 CompleteJob();
+            }
+            else
+            {
+                FailJob();
             }
         }
 
@@ -131,6 +159,7 @@ namespace OgunWorks.UI
 
         private void CompleteJob()
         {
+            Debug.Log($"job complete");
             assignedJob.state = JobState.Claimable;
             claimButton.interactable = true;
             if (progressRoutine != null)

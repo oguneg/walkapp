@@ -28,6 +28,7 @@ namespace OgunWorks.UI
             gameObject.SetActive(true);
         }
 
+
         public void Deactivate()
         {
             assignedJob = null;
