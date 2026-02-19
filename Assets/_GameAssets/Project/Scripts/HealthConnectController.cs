@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using System;
 using TMPro;
 
-public class HealthConnectController : MonoBehaviour
+public class HealthConnectController : MonoSingleton<HealthConnectController>
 {
     // Drag a Text UI element here in the Inspector to see the results
     public TextMeshProUGUI statusText; 
@@ -16,13 +16,10 @@ public class HealthConnectController : MonoBehaviour
 
     private AndroidJavaObject _pluginInstance;
 
-    void Start()
+    public void InitializePlugin()
     {
-        InitializePlugin();
-    }
-
-    private void InitializePlugin()
-    {
+        if (_pluginInstance != null) return;
+        
         // 1. Check Platform
         if (Application.platform != RuntimePlatform.Android)
         {
@@ -61,20 +58,24 @@ public class HealthConnectController : MonoBehaviour
 
     private void OnConnectionEstablished()
     {
-        RequestPermissions();
         FindFirstObjectByType<StepDataHandler>().OnConnectionEstablished();
         FindFirstObjectByType<StepDisplayManager>().OnConnectionEstablished();
     }
 
     public void RequestPermissions()
     {
+        InitializePlugin();
         if (_pluginInstance != null)
         {
             _pluginInstance.Call("requestPermissions");
+            PermissionsManager.instance.OnPermissionsGiven();
         }
         else
         {
             Debug.LogError("Cannot request permissions: Plugin is null.");
+            #if UNITY_EDITOR
+            PermissionsManager.instance.OnPermissionsGiven();
+            #endif
         }
     }
 

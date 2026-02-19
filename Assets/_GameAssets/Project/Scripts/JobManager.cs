@@ -72,6 +72,7 @@ public class JobManager : MonoSingleton<JobManager>
         if (isSuccess)
         {
             completedJobCount++;
+            ExperienceManager.instance.AddExperience(activeJob.jobData.distance * 10);
             CurrencyManager.instance.AddCurrency(CurrencyType.Coin, activeJob.jobData.reward);
             UIManager.instance.UpdateCompletedJobCount(completedJobCount);
         }

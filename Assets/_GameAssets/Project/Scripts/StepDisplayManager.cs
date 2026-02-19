@@ -51,6 +51,7 @@ public class StepDisplayManager : MonoSingleton<StepDisplayManager>
         if (Input.GetKeyDown(KeyCode.A))
         {
             cheatSteps += 15;
+            displayedTotal += 100;
         }
     }
 
@@ -83,7 +84,7 @@ public class StepDisplayManager : MonoSingleton<StepDisplayManager>
     
     public void OnConnectionEstablished()
     {
-        healthPlugin = FindFirstObjectByType<HealthConnectController>().HealthPlugin;
+        healthPlugin = HealthConnectController.instance.HealthPlugin;
         Initialize();
         StartCoroutine(UpdateRoutine());
     }
@@ -141,6 +142,8 @@ public class StepDisplayManager : MonoSingleton<StepDisplayManager>
     // --- HELPER: Trigger Health Connect Fetches ---
     public void RefreshHealthConnectData()
     {
+        if (healthPlugin == null) return;
+        
         // 1. Fetch Today (Midnight to Now)
         DateTime now = DateTime.Now;
         DateTime todayStart = DateTime.Today; // 00:00:00 Local
