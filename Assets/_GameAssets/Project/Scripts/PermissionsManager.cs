@@ -7,6 +7,7 @@ public class PermissionsManager : MonoSingleton<PermissionsManager>
     [SerializeField] private GameObject permissionsManagerPanel;
     private void Awake()
     {
+        return;
         if (PlayerPrefsX.GetBool(IsPermissionsGivenKey, false))
         {
             OnPermissionsComplete();
@@ -18,7 +19,6 @@ public class PermissionsManager : MonoSingleton<PermissionsManager>
     private void OnPermissionsComplete()
     {
         permissionsManagerPanel.SetActive(false);
-        GameManager.instance.OnPermissionsGiven();
     }
 
     public void OnPermissionsGiven()

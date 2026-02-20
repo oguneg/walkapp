@@ -127,8 +127,8 @@ namespace OgunWorks.UI
         {
             Debug.Log($"time over - querying steps");
 
-            StepDisplayManager.instance.GetStepsInTimePeriod(assignedJob.AcceptTime, assignedJob.DeadlineTime,
-                TimeOverResponse);
+            //StepDisplayManager.instance.GetStepsInTimePeriod(assignedJob.AcceptTime, assignedJob.DeadlineTime,
+            //    TimeOverResponse);
         }
 
         private void FailJob()
@@ -152,7 +152,7 @@ namespace OgunWorks.UI
 
         private void CheckForCompletion()
         {
-            stepsLeft = assignedJob.targetStepCount - StepDisplayManager.instance.currentTotalSteps;
+            //stepsLeft = assignedJob.targetStepCount - StepDisplayManager.instance.currentTotalSteps;
             if (stepsLeft <= 0)
             {
                 stepsLeft = 0;

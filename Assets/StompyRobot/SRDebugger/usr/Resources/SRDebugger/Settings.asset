@@ -16,8 +16,8 @@ MonoBehaviour:
   _defaultTab: 1
   _triggerEnableMode: 0
   _triggerBehaviour: 0
-  _errorNotification: 0
-  _enableKeyboardShortcuts: 1
+  _errorNotification: 1
+  _enableKeyboardShortcuts: 0
   _keyboardShortcuts: []
   _newKeyboardShortcuts:
   - Action: 1
@@ -59,7 +59,7 @@ MonoBehaviour:
   _profilerAlignment: 2
   _optionsAlignment: 3
   _consoleAlignment: 0
-  _triggerPosition: 6
+  _triggerPosition: 0
   _maximumConsoleEntries: 1500
   _enableEventSystemCreation: 1
   _automaticShowCursor: 1

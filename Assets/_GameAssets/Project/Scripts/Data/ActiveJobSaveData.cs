@@ -18,7 +18,7 @@ public class ActiveJobSaveData
     public ActiveJobSaveData(JobData data)
     {
         this.jobData = data;
-        this.stepCountAtStart = StepDisplayManager.instance.currentTotalSteps;
+        this.stepCountAtStart = StepManager.instance.totalSteps;
         this.targetStepCount = stepCountAtStart + data.steps;
         
         // Save current time as Ticks (a giant integer)
