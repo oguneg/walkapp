@@ -9,8 +9,7 @@ public class ActiveJobSaveData
     public JobState state = JobState.None;
     public long acceptTimestamp;
     public long deadlineTimestamp;
-    public long stepCountAtStart;
-    public long targetStepCount;
+    public long stepsLeft;
 
     public bool isValid = false; 
 
@@ -18,8 +17,7 @@ public class ActiveJobSaveData
     public ActiveJobSaveData(JobData data)
     {
         this.jobData = data;
-        this.stepCountAtStart = StepManager.instance.totalSteps;
-        this.targetStepCount = stepCountAtStart + data.steps;
+        this.stepsLeft = data.steps;
         
         // Save current time as Ticks (a giant integer)
         this.acceptTimestamp = DateTime.Now.Ticks;

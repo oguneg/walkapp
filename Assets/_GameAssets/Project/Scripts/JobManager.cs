@@ -80,4 +80,28 @@ public class JobManager : MonoSingleton<JobManager>
         activeJob = null;
         JobSaveManager.ClearJob();
     }
+
+    public void RegisterSteps(int amount)
+    {
+        if (activeJob != null)
+        {
+            activeJob.stepsLeft -= amount;
+        }
+    }
+
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus && activeJob != null)
+        {
+            JobSaveManager.SaveJob(activeJob);
+        }
+    }
+
+    void OnApplicationQuit()
+    {
+        if (activeJob != null)
+        {
+            JobSaveManager.SaveJob(activeJob);
+        }
+    }
 }

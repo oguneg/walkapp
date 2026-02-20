@@ -95,12 +95,18 @@ public class StepManager : MonoSingleton<StepManager>
             else
                 offlineSteps = startupHardwareSteps - lastSavedSteps;
         }
-
-        totalSteps += offlineSteps;
+        
+        RegisterSteps(offlineSteps);
         sessionSteps = 0;
         sessionStepsAnchor = 0;
 
         UpdateGUI();
+    }
+
+    private void RegisterSteps(int amount)
+    {
+        totalSteps += amount;
+        JobManager.instance.RegisterSteps(amount);
     }
 
     private IEnumerator UpdateRoutine()
@@ -119,7 +125,7 @@ public class StepManager : MonoSingleton<StepManager>
         Debug.Log("fetching live steps");
         readSteps = StepCounter.current.stepCounter.ReadValue();
         sessionSteps = StepCounter.current.stepCounter.ReadValue() - startupHardwareSteps;
-        totalSteps += sessionSteps - sessionStepsAnchor;
+        RegisterSteps(sessionSteps - sessionStepsAnchor);
         sessionStepsAnchor = sessionSteps;
         UpdateGUI();
     }

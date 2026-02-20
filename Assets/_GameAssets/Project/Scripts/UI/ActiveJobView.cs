@@ -92,7 +92,7 @@ namespace OgunWorks.UI
                 yield return wfs;
             }
         }
-
+        
         private void UpdateStepsLeft()
         {
             stepsLeftText.text = $"{stepsLeft:N0} steps left";
@@ -150,9 +150,10 @@ namespace OgunWorks.UI
             }
         }
 
+
         private void CheckForCompletion()
         {
-            //stepsLeft = assignedJob.targetStepCount - StepDisplayManager.instance.currentTotalSteps;
+            stepsLeft = assignedJob.stepsLeft;
             if (stepsLeft <= 0)
             {
                 stepsLeft = 0;
