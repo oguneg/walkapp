@@ -46,6 +46,7 @@ namespace OgunWorks.UI
             claimButton.interactable = false;
             gameObject.SetActive(true);
             assignedJob.state = JobState.Active;
+            UpdateStatus();
         }
 
         private void OnEnable()
@@ -82,14 +83,18 @@ namespace OgunWorks.UI
             WaitForSeconds wfs = new WaitForSeconds(1f);
             while (true)
             {
-                if (assignedJob.state == JobState.Active)
-                {
-                    UpdateStepsLeft();
-                    UpdateTimeLeft();
-                    CheckForCompletion();
-                }
-
+                UpdateStatus();
                 yield return wfs;
+            }
+        }
+
+        private void UpdateStatus()
+        {
+            if (assignedJob.state == JobState.Active)
+            {
+                UpdateStepsLeft();
+                UpdateTimeLeft();
+                CheckForCompletion();
             }
         }
         

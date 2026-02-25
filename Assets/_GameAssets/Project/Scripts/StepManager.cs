@@ -66,7 +66,11 @@ public class StepManager : MonoSingleton<StepManager>
 
     private void LoadSteps()
     {
-        if (StepCounter.current == null) return;
+        if (StepCounter.current == null)
+        {
+            Debug.LogError("tried to load steps but no step counter");
+            return;
+        }
 
         startupHardwareSteps = StepCounter.current.stepCounter.ReadValue();
         readSteps = startupHardwareSteps;
@@ -129,16 +133,43 @@ public class StepManager : MonoSingleton<StepManager>
         sessionStepsAnchor = sessionSteps;
         UpdateGUI();
     }
-
+    
     void OnApplicationPause(bool isPaused)
     {
         if (!PlayerPrefs.HasKey(LastHardwareStepsKey)) return;
         
-        if (isPaused) SaveState();
+        if (isPaused) 
+        {
+            SaveState();
+        }
         else
         {
-            LoadSteps();
+            // Do NOT call LoadSteps() directly here. 
+            // The OS needs a split second to hand the new data to Unity.
+            StartCoroutine(ResumeRoutine());
         }
+    }
+
+    private System.Collections.IEnumerator ResumeRoutine()
+    {
+        if (StepCounter.current != null)
+        {
+            // THE TRICK: Force Android to flush the latest batched steps 
+            // by resetting the listener.
+            InputSystem.DisableDevice(StepCounter.current);
+            yield return null; // Wait one frame
+            InputSystem.EnableDevice(StepCounter.current);
+        }
+
+        // Wait a tiny, deterministic amount of frames for the OS to push the updated number.
+        // We use frames instead of seconds so it scales to the device's speed.
+        for (int i = 0; i < 5; i++) 
+        {
+            yield return null;
+        }
+
+        // NOW it is safe to calculate the offline delta.
+        LoadSteps();
     }
 
     private void UpdateGUI()
