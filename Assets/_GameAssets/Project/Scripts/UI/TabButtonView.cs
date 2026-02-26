@@ -28,6 +28,6 @@ namespace OgunWorks.UI
 
     public enum TabType
     {
-        JobList, ActiveJobs, Stats
+        JobList, ActiveJobs, Stats, Upgrades, Fleet
     }
 }

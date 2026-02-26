@@ -22,6 +22,7 @@ public class UIManager : MonoSingleton<UIManager>
 
         foreach (var tab in tabs)
         {
+            tab.transform.localPosition = new Vector3(0,tab.transform.localPosition.y);
             tab.Deactivate();
         }
         
@@ -63,6 +64,6 @@ public class UIManager : MonoSingleton<UIManager>
 
     public void UpdateCompletedJobCount(int i)
     {
-        completedJobsText.text = $"Completed Jobs: {i}";
+        //completedJobsText.text = $"Completed Jobs: {i}";
     }
 }
