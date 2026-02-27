@@ -41,14 +41,14 @@ namespace OgunWorks.UI
 
             int hours = job.jobData.timeInMinutes / 60;
             int minutes = job.jobData.timeInMinutes % 60;
-            timeText.text = (hours > 0) ? $"{hours}:{minutes:00} hrs" : $"{minutes} min";
+            //timeText.text = (hours > 0) ? $"{hours}:{minutes:00} hrs" : $"{minutes} min";
 
             claimButton.interactable = false;
             gameObject.SetActive(true);
             assignedJob.state = JobState.Active;
             UpdateStatus();
         }
-
+/*
         private void OnEnable()
         {
             if (!isEmpty)
@@ -64,8 +64,7 @@ namespace OgunWorks.UI
                 StopCoroutine(progressRoutine);
             }
         }
-        
-                
+           
         void OnApplicationPause(bool paused)
         {
             if (!paused)
@@ -77,7 +76,7 @@ namespace OgunWorks.UI
                 }
             }
         }
-
+        
         public IEnumerator UpdateProgress()
         {
             WaitForSeconds wfs = new WaitForSeconds(1f);
@@ -87,20 +86,20 @@ namespace OgunWorks.UI
                 yield return wfs;
             }
         }
+*/
 
-        private void UpdateStatus()
+        public void UpdateStatus()
         {
             if (assignedJob.state == JobState.Active)
             {
                 UpdateStepsLeft();
-                UpdateTimeLeft();
+                //UpdateTimeLeft();
                 CheckForCompletion();
             }
         }
         
         private void UpdateStepsLeft()
         {
-            stepsLeftText.text = $"{stepsLeft:N0} steps left";
             stepProgressBar.fillAmount = 1f - stepsLeft * 1f / assignedJob.jobData.steps;
         }
 
@@ -108,10 +107,12 @@ namespace OgunWorks.UI
         {
             if (assignedJob.TimeRemainingSeconds < 0 && assignedJob.state != JobState.Claimable)
             {
+                /*
                 if (progressRoutine != null)
                 {
                     StopCoroutine(progressRoutine);
                 }
+                */
 
                 timeProgressBar.fillAmount = 1;
                 timeLeftText.text = "Time Over - Job Failed";
@@ -139,7 +140,7 @@ namespace OgunWorks.UI
         private void FailJob()
         {
             assignedJob.state = JobState.Failed;
-            Debug.Log("job  dummy failed");
+            Debug.Log("job dummy failed");
         }
 
         private void TimeOverResponse(int steps)
@@ -159,6 +160,8 @@ namespace OgunWorks.UI
         private void CheckForCompletion()
         {
             stepsLeft = assignedJob.stepsLeft;
+            stepsLeftText.text = $"{stepsLeft:N0} steps left";
+            
             if (stepsLeft <= 0)
             {
                 stepsLeft = 0;

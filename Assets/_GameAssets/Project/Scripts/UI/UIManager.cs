@@ -45,6 +45,11 @@ public class UIManager : MonoSingleton<UIManager>
         activeTab.Activate();
     }
 
+    public void ForceTab(TabType tabType)
+    {
+        OnTabButtonClicked(tabButtons[(int)tabType]);
+    }
+
     public void AddJob(JobData jobData)
     {
         jobListView.AddJob(jobData);
@@ -54,6 +59,11 @@ public class UIManager : MonoSingleton<UIManager>
     {
         activeJobView.AssignJob(job);
         activeJobView.OnJobResponse = OnActiveJobResponse;
+    }
+
+    public void UpdateActiveJobStatus()
+    {
+        activeJobView.UpdateStatus();
     }
 
     public void OnActiveJobResponse(ActiveJobView jobView, bool response)

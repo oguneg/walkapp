@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using OgunWorks.UI;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -9,8 +10,11 @@ public class JobManager : MonoSingleton<JobManager>
     public List<JobData> availableJobs;
     public ActiveJobSaveData activeJob;
     public int completedJobCount = 0;
+    private UIManager uiManager;
+    
     private IEnumerator Start()
     {
+        uiManager = UIManager.instance;
         CreateJob();
         activeJob = JobSaveManager.LoadJob();
         if (activeJob != null)
@@ -51,7 +55,7 @@ public class JobManager : MonoSingleton<JobManager>
         job.fuelCost = job.distance * 10 * Random.Range(10, 15);
         job.reward = job.distance * Random.Range(10,15) / 3;
         
-        UIManager.instance.AddJob(job);
+        uiManager.AddJob(job);
     }
 
     public void AcceptJob(JobData job)
@@ -60,11 +64,12 @@ public class JobManager : MonoSingleton<JobManager>
         Debug.Log(activeJob);
         JobSaveManager.SaveJob(activeJob);
         DisplayActiveJob();
+        uiManager.ForceTab(TabType.ActiveJobs);
     }
 
     private void DisplayActiveJob()
     {
-        UIManager.instance.DisplayActiveJob(activeJob);
+        uiManager.DisplayActiveJob(activeJob);
     }
     
     public void EndJob(bool isSuccess)
@@ -74,7 +79,7 @@ public class JobManager : MonoSingleton<JobManager>
             completedJobCount++;
             ExperienceManager.instance.AddExperience(activeJob.jobData.distance * 10);
             CurrencyManager.instance.AddCurrency(CurrencyType.Coin, activeJob.jobData.reward);
-            UIManager.instance.UpdateCompletedJobCount(completedJobCount);
+            uiManager.UpdateCompletedJobCount(completedJobCount);
         }
         
         activeJob = null;
@@ -86,6 +91,7 @@ public class JobManager : MonoSingleton<JobManager>
         if (activeJob != null)
         {
             activeJob.stepsLeft -= amount;
+            uiManager.UpdateActiveJobStatus();
         }
     }
 

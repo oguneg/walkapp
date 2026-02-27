@@ -32,8 +32,8 @@ public class ActiveJobSaveData
 
     public DateTime AcceptTime => new DateTime(acceptTimestamp);
     public DateTime DeadlineTime => new DateTime(deadlineTimestamp);
-    
-    public double TimeRemainingSeconds => (DeadlineTime - DateTime.Now).TotalSeconds;
+
+    public double TimeRemainingSeconds => 999; //(DeadlineTime - DateTime.Now).TotalSeconds;
 }
 
 public static class JobSaveManager
