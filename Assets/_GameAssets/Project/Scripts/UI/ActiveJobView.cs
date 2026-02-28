@@ -46,6 +46,7 @@ namespace OgunWorks.UI
             claimButton.interactable = false;
             gameObject.SetActive(true);
             assignedJob.state = JobState.Active;
+            stepsLeft = job.jobData.steps;
             UpdateStatus();
         }
 /*
@@ -92,7 +93,7 @@ namespace OgunWorks.UI
         {
             if (assignedJob.state == JobState.Active)
             {
-                UpdateStepsLeft();
+                //UpdateStepsLeft();
                 //UpdateTimeLeft();
                 CheckForCompletion();
             }
@@ -161,11 +162,12 @@ namespace OgunWorks.UI
         {
             stepsLeft = assignedJob.stepsLeft;
             stepsLeftText.text = $"{stepsLeft:N0} steps left";
-            
+            UpdateStepsLeft();
             if (stepsLeft <= 0)
             {
                 stepsLeft = 0;
                 stepProgressBar.fillAmount = 1f;
+                stepsLeftText.text = $"Job Complete!";
                 CompleteJob();
             }
         }
