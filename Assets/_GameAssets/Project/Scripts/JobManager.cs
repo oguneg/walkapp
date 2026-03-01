@@ -54,7 +54,8 @@ public class JobManager : MonoSingleton<JobManager>
 
         job.fuelCost = job.distance * 10 * Random.Range(10, 15);
         job.reward = job.distance * Random.Range(10,15) / 3;
-        
+        job.reward = (long)(job.reward * UpgradeManager.instance.globalMultipliers[(int)UpgradeType.IncomeMultiplier]);
+        job.fuelCost = (long)(job.fuelCost / UpgradeManager.instance.globalMultipliers[(int)UpgradeType.FuelEfficiency]);
         uiManager.AddJob(job);
     }
 

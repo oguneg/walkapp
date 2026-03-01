@@ -14,6 +14,25 @@ public partial class SROptions
 {
     // Uncomment the #define at the top of file to enable test options
 
+    [Category("Test")]
+    public void Add1000Money()
+    {
+        CurrencyManager.instance.AddCurrency(CurrencyType.Coin,1000);
+    }
+    
+    [Category("Test")]
+    public void Add100Fuel()
+    {
+        CurrencyManager.instance.AddCurrency(CurrencyType.Fuel,100000);
+    }
+    
+    [Category("Test")]
+    public void Add100Steps()
+    {
+        JobManager.instance.RegisterSteps(100);
+    }
+    
+    
 #if ENABLE_TEST_SROPTIONS
 
     public enum TestValues
