@@ -7,7 +7,7 @@ using UnityEngine;
 public class JobListView : MonoBehaviour
 {
     [SerializeField] private List<JobOfferView> jobOfferViews;
-
+    private int activeJobCount = 0;
     private void Awake()
     {
         foreach (var element in jobOfferViews)
@@ -34,17 +34,25 @@ public class JobListView : MonoBehaviour
 
     public void AddJob(JobData jobData)
     {
-        jobOfferViews.FirstOrDefault(o => o.isEmpty)?.AssignJob(jobData);
+        var firstAvailableView = jobOfferViews.FirstOrDefault(o => o.isEmpty);
+        if (firstAvailableView != null)
+        {
+            firstAvailableView.AssignJob(jobData);
+            firstAvailableView.transform.SetSiblingIndex(activeJobCount);
+            activeJobCount++;
+        }
     }
 
     private void OnJobAccepted(JobOfferView jobOfferView)
     {
         JobManager.instance.AcceptJob(jobOfferView.assignedJob);
         jobOfferView.Deactivate();
+        activeJobCount--;
     }
 
     private void OnJobRemoved(JobOfferView jobOfferView)
     {
         jobOfferView.Deactivate();
+        activeJobCount--;
     }
 }

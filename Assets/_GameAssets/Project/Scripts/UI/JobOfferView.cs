@@ -37,8 +37,8 @@ namespace OgunWorks.UI
         {
             assignedJob = null;
             isEmpty = true;
-            gameObject.SetActive(false);
             transform.SetAsLastSibling();
+            gameObject.SetActive(false);
         }
         
         public void OnResponseButton(bool isAccepted)
