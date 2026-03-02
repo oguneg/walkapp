@@ -10,6 +10,7 @@ public class UIManager : MonoSingleton<UIManager>
     [SerializeField] private JobListView jobListView;
     [SerializeField] private ActiveJobView activeJobView;
     [SerializeField] private TextMeshProUGUI completedJobsText;
+    [SerializeField] private TextMeshProUGUI bankedStepsText;
     
     private TabButtonView activeTabButton;
     private TabView activeTab;
@@ -75,5 +76,10 @@ public class UIManager : MonoSingleton<UIManager>
     public void UpdateCompletedJobCount(int i)
     {
         //completedJobsText.text = $"Completed Jobs: {i}";
+    }
+
+    public void UpdateBankedSteps(long bankedSteps)
+    {
+        bankedStepsText.text = $"banked steps: {bankedSteps:N0}";
     }
 }

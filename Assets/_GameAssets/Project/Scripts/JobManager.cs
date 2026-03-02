@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using OgunWorks.UI;
+using TMPro;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -12,9 +13,14 @@ public class JobManager : MonoSingleton<JobManager>
     public int completedJobCount = 0;
     private UIManager uiManager;
     
+    private const string bankedStepsKey = "bankedSteps";
+    private long bankedSteps;
+    
     private IEnumerator Start()
     {
         uiManager = UIManager.instance;
+        bankedSteps = PlayerPrefsX.GetLong(bankedStepsKey, 0); 
+        uiManager.UpdateBankedSteps(bankedSteps);
         CreateJob();
         activeJob = JobSaveManager.LoadJob();
         if (activeJob != null)
@@ -94,10 +100,17 @@ public class JobManager : MonoSingleton<JobManager>
             activeJob.stepsLeft -= amount;
             uiManager.UpdateActiveJobStatus();
         }
+        else
+        {
+            bankedSteps += amount;
+            uiManager.UpdateBankedSteps(bankedSteps);
+        }
+        
     }
 
     private void OnApplicationPause(bool pauseStatus)
     {
+        PlayerPrefsX.SetLong(bankedStepsKey, bankedSteps);
         if (pauseStatus && activeJob != null)
         {
             JobSaveManager.SaveJob(activeJob);
@@ -110,5 +123,6 @@ public class JobManager : MonoSingleton<JobManager>
         {
             JobSaveManager.SaveJob(activeJob);
         }
+        PlayerPrefsX.SetLong(bankedStepsKey, bankedSteps);
     }
 }
