@@ -36,7 +36,7 @@ public class JobManager : MonoSingleton<JobManager>
 
     private void CreateJob()
     {
-        var job =  new JobData();
+        var job = new JobData();
         job.cargoType = (CargoType)Random.Range(0, 8);
         job.jobType = (JobType)Random.Range(0, 3);
         switch (job.jobType)
@@ -97,15 +97,32 @@ public class JobManager : MonoSingleton<JobManager>
     {
         if (activeJob != null)
         {
-            activeJob.stepsLeft -= amount;
-            uiManager.UpdateActiveJobStatus();
+            if (activeJob.stepsLeft > 0)
+            {
+                var leftoverSteps = amount - activeJob.stepsLeft;
+                activeJob.stepsLeft -= amount;
+                
+                uiManager.UpdateActiveJobStatus();
+                if (activeJob.stepsLeft <= 0)
+                {
+                    RegisterBankedSteps(leftoverSteps);
+                }
+            }
+            else
+            {
+                RegisterBankedSteps(amount);
+            }
         }
         else
         {
-            bankedSteps += amount;
-            uiManager.UpdateBankedSteps(bankedSteps);
+            RegisterBankedSteps(amount);
         }
-        
+    }
+
+    private void RegisterBankedSteps(long amount)
+    {
+        bankedSteps += amount;
+        uiManager.UpdateBankedSteps(bankedSteps);
     }
 
     private void OnApplicationPause(bool pauseStatus)

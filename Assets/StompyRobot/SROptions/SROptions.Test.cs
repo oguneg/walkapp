@@ -32,6 +32,12 @@ public partial class SROptions
         JobManager.instance.RegisterSteps(100);
     }
     
+    [Category("Test")]
+    public void Add1000Steps()
+    {
+        JobManager.instance.RegisterSteps(1000);
+    }
+    
     
 #if ENABLE_TEST_SROPTIONS
 
