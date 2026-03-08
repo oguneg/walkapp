@@ -29,6 +29,7 @@ public class UpgradeManager : MonoSingleton<UpgradeManager>
         {
             globalMultipliers[(int)type] += multiplier;
             globalMultiplierTexts[(int)type].text = $"{type}{Environment.NewLine} +{globalMultipliers[(int)type]:F2}";
+            CurrencyManager.instance.CheckCaps();
         }
     }
 }

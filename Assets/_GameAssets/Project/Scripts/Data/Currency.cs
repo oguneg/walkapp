@@ -17,5 +17,5 @@ public class Currency : ScriptableObject
 
 public enum CurrencyType
 {
-    Coin, Fuel
+    Coin, Fuel, BankedStep
 }

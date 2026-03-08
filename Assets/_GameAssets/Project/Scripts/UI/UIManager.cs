@@ -77,9 +77,4 @@ public class UIManager : MonoSingleton<UIManager>
     {
         //completedJobsText.text = $"Completed Jobs: {i}";
     }
-
-    public void UpdateBankedSteps(long bankedSteps)
-    {
-        bankedStepsText.text = $"banked steps: {bankedSteps:N0}";
-    }
 }

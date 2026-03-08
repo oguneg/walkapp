@@ -15,7 +15,7 @@ public class UpgradeItemView : MonoBehaviour
         assignedUpgrade = upgrade;
         upgradeNameText.text = upgrade.upgradeName;
         upgradeCostText.text = $"${upgrade.baseCost:N0}";
-        upgradeDescriptionText.text = $"{upgrade.upgradeEffects[0].type} x{upgrade.upgradeEffects[0].increaseValue}";
+        upgradeDescriptionText.text = $"{upgrade.upgradeEffects[0].type} {(upgrade.upgradeEffects[0].isMultiplicative?'x':'+')}{upgrade.upgradeEffects[0].increaseValue}";
         LoadUpgradeLevel();
         CalculateCost();
     }
@@ -45,7 +45,8 @@ public class UpgradeItemView : MonoBehaviour
             CurrencyManager.instance.AddCurrency(CurrencyType.Coin, -upgradeCost);
             upgradeLevel++;
             PlayerPrefs.SetInt(assignedUpgrade.upgradeSaveKey, upgradeLevel);
-            UpgradeManager.instance.UpdateMultiplier(assignedUpgrade.upgradeEffects[0].type, assignedUpgrade.upgradeEffects[0].increaseValue, true);
+            var upgradeEffect = assignedUpgrade.upgradeEffects[0];
+            UpgradeManager.instance.UpdateMultiplier(upgradeEffect.type, upgradeEffect.increaseValue, upgradeEffect.isMultiplicative);
             CalculateCost();
         }
     }

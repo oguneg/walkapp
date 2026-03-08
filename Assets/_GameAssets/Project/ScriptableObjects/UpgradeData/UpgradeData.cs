@@ -21,5 +21,5 @@ public struct UpgradeEffect
 
 public enum UpgradeType
 {
-    FuelEfficiency, IncomeMultiplier, ExpMultiplier
+    FuelEfficiency, IncomeMultiplier, BankedStepCap
 }

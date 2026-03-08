@@ -13,14 +13,9 @@ public class JobManager : MonoSingleton<JobManager>
     public int completedJobCount = 0;
     private UIManager uiManager;
     
-    private const string bankedStepsKey = "bankedSteps";
-    private long bankedSteps;
-    
     private IEnumerator Start()
     {
         uiManager = UIManager.instance;
-        bankedSteps = PlayerPrefsX.GetLong(bankedStepsKey, 0); 
-        uiManager.UpdateBankedSteps(bankedSteps);
         CreateJob();
         activeJob = JobSaveManager.LoadJob();
         if (activeJob != null)
@@ -100,7 +95,17 @@ public class JobManager : MonoSingleton<JobManager>
             if (activeJob.stepsLeft > 0)
             {
                 var leftoverSteps = amount - activeJob.stepsLeft;
+                var stepsLeft = activeJob.stepsLeft;
                 activeJob.stepsLeft -= amount;
+                if (activeJob.stepsLeft >= 0)
+                {
+                    var bankedStepsToBurn = Math.Clamp(amount, 0,
+                        Math.Min(CurrencyManager.instance.GetCurrencyAmount(CurrencyType.BankedStep),
+                            activeJob.stepsLeft));
+                    
+                    activeJob.stepsLeft -= bankedStepsToBurn;
+                    CurrencyManager.instance.AddCurrency(CurrencyType.BankedStep, -bankedStepsToBurn);
+                }
                 
                 uiManager.UpdateActiveJobStatus();
                 if (activeJob.stepsLeft <= 0)
@@ -121,13 +126,11 @@ public class JobManager : MonoSingleton<JobManager>
 
     private void RegisterBankedSteps(long amount)
     {
-        bankedSteps += amount;
-        uiManager.UpdateBankedSteps(bankedSteps);
+        CurrencyManager.instance.AddCurrency(CurrencyType.BankedStep, amount);
     }
 
     private void OnApplicationPause(bool pauseStatus)
     {
-        PlayerPrefsX.SetLong(bankedStepsKey, bankedSteps);
         if (pauseStatus && activeJob != null)
         {
             JobSaveManager.SaveJob(activeJob);
@@ -140,6 +143,5 @@ public class JobManager : MonoSingleton<JobManager>
         {
             JobSaveManager.SaveJob(activeJob);
         }
-        PlayerPrefsX.SetLong(bankedStepsKey, bankedSteps);
     }
 }

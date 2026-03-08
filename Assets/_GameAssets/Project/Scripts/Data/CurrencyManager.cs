@@ -9,6 +9,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
 
     // Data containers
     private Dictionary<CurrencyType, long> currencyAmounts = new Dictionary<CurrencyType, long>();
+    private Dictionary<CurrencyType, long> currencyCaps = new Dictionary<CurrencyType, long>();
     private Dictionary<CurrencyType, Currency> currencyMap = new Dictionary<CurrencyType, Currency>();
     
     // NEW: Timers for active runtime regeneration
@@ -20,14 +21,21 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     
     private const string LAST_SESSION_TIME_KEY = "LastSessionTime_UTC";
 
+    public long GetCurrencyCap(CurrencyType currencyType)
+    {
+        return currencyCaps[currencyType];
+    }
+    
     private void Awake()
     {
         foreach (Currency currency in currencies)
         {
             currencyAmounts.Add(currency.CurrencyType, 0);
-
+            currencyCaps.Add(currency.CurrencyType, currency.initialCap);
             if (!currencyMap.ContainsKey(currency.CurrencyType))
+            {
                 currencyMap.Add(currency.CurrencyType, currency);
+            }
             
             if (currency.regenerateOffline)
             {
@@ -72,8 +80,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
 
         if (currencyMap[currencyType].hasCap)
         {
-            long cap = currencyMap[currencyType].initialCap;
-            currencyAmounts[currencyType] = Math.Clamp(currencyAmounts[currencyType], 0, cap);
+            currencyAmounts[currencyType] = Math.Clamp(currencyAmounts[currencyType], 0, currencyCaps[currencyType]);
         }
 
         OnCurrencyAmountChanged?.Invoke(currencyType, currencyAmounts[currencyType]);
@@ -96,7 +103,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     {
         foreach (Currency currency in currencies)
         {
-            long defaultValue = currency.hasCap ? currency.initialCap : 0;
+            long defaultValue = currency.hasCap && currency.regenerateOffline ? currency.initialCap : 0;
             currencyAmounts[currency.CurrencyType] = PlayerPrefsX.GetLong(currency.SaveKey, defaultValue);
             OnCurrencyAmountChanged?.Invoke(currency.CurrencyType, currencyAmounts[currency.CurrencyType]);
         }
@@ -154,5 +161,18 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     void OnApplicationQuit()
     {
         SaveCurrencies();
+    }
+
+    public void CheckCaps()
+    {
+        currencyCaps[CurrencyType.BankedStep] = currencyMap[CurrencyType.BankedStep].initialCap +
+                                                (long)UpgradeManager.instance.globalMultipliers[2];
+        
+        AddCurrency(CurrencyType.BankedStep, 0);
+    }
+
+    public long GetCurrencyAmount(CurrencyType type)
+    {
+        return currencyAmounts[type];
     }
 }
