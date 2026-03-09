@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -11,23 +12,26 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     private Dictionary<CurrencyType, long> currencyAmounts = new Dictionary<CurrencyType, long>();
     private Dictionary<CurrencyType, long> currencyCaps = new Dictionary<CurrencyType, long>();
     private Dictionary<CurrencyType, Currency> currencyMap = new Dictionary<CurrencyType, Currency>();
-    
+
     // NEW: Timers for active runtime regeneration
     private Dictionary<CurrencyType, float> activeRegenTimers = new Dictionary<CurrencyType, float>();
 
     public UnityAction<CurrencyType, long> OnCurrencyAmountChanged;
 
     public long GetFuelCap => currencies[(int)CurrencyType.Fuel].initialCap;
-    
+
     private const string LAST_SESSION_TIME_KEY = "LastSessionTime_UTC";
+    
+    private UpgradeManager upgradeManager;
 
     public long GetCurrencyCap(CurrencyType currencyType)
     {
         return currencyCaps[currencyType];
     }
-    
+
     private void Awake()
     {
+        upgradeManager = UpgradeManager.instance;
         foreach (Currency currency in currencies)
         {
             currencyAmounts.Add(currency.CurrencyType, 0);
@@ -36,7 +40,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
             {
                 currencyMap.Add(currency.CurrencyType, currency);
             }
-            
+
             if (currency.regenerateOffline)
             {
                 activeRegenTimers.Add(currency.CurrencyType, 0f);
@@ -47,23 +51,29 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     private void Start()
     {
         LoadCurrencies();
+        StartCoroutine(UpdateTimers());
     }
 
-    private void Update()
+    private IEnumerator UpdateTimers()
     {
-        foreach (Currency currency in currencies)
+        var wfs = new WaitForSeconds(1f);
+        while (true)
         {
-            if (currency.regenerateOffline && 
-                currencyAmounts[currency.CurrencyType] < currency.initialCap)
+            foreach (Currency currency in currencies)
             {
-                activeRegenTimers[currency.CurrencyType] += Time.deltaTime;
-
-                if (activeRegenTimers[currency.CurrencyType] >= currency.regenIntervalInSeconds)
+                if (currency.regenerateOffline &&
+                    currencyAmounts[currency.CurrencyType] < currency.initialCap)
                 {
-                    AddCurrency(currency.CurrencyType, currency.regenRate);
-                    activeRegenTimers[currency.CurrencyType] -= currency.regenIntervalInSeconds;
+                    activeRegenTimers[currency.CurrencyType] += 1;
+
+                    if (activeRegenTimers[currency.CurrencyType] >= currency.regenIntervalInSeconds)
+                    {
+                        AddCurrency(currency.CurrencyType, currency.regenRate);
+                        activeRegenTimers[currency.CurrencyType] -= currency.regenIntervalInSeconds;
+                    }
                 }
             }
+            yield return wfs;
         }
     }
 
@@ -85,7 +95,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
 
         OnCurrencyAmountChanged?.Invoke(currencyType, currencyAmounts[currencyType]);
     }
-    
+
     private void SaveCurrencies()
     {
         foreach (Currency currency in currencies)
@@ -95,7 +105,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
 
         long quitTime = DateTime.UtcNow.ToBinary();
         PlayerPrefs.SetString(LAST_SESSION_TIME_KEY, quitTime.ToString());
-        
+
         PlayerPrefs.Save();
     }
 
@@ -121,7 +131,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
         {
             DateTime lastSessionTime = DateTime.FromBinary(binaryTime);
             TimeSpan timeAway = DateTime.UtcNow - lastSessionTime;
-            
+
             // Safety check: Prevent negative time (clock changes)
             if (timeAway.TotalSeconds < 0) return;
 
@@ -133,11 +143,11 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
                     if (currencyAmounts[currency.CurrencyType] >= currency.initialCap) continue;
 
                     long intervals = (long)(timeAway.TotalSeconds / currency.regenIntervalInSeconds);
-                    
+
                     if (intervals > 0)
                     {
                         AddCurrency(currency.CurrencyType, intervals * currency.regenRate);
-                        
+
                         float remainder = (float)(timeAway.TotalSeconds % currency.regenIntervalInSeconds);
                         activeRegenTimers[currency.CurrencyType] = remainder;
                     }
@@ -145,7 +155,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
             }
         }
     }
-    
+
     void OnApplicationPause(bool paused)
     {
         if (paused)
@@ -154,7 +164,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
         }
         else
         {
-            ProcessOfflineRegeneration(); 
+            ProcessOfflineRegeneration();
         }
     }
 
@@ -166,8 +176,8 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     public void CheckCaps()
     {
         currencyCaps[CurrencyType.BankedStep] = currencyMap[CurrencyType.BankedStep].initialCap +
-                                                (long)UpgradeManager.instance.globalMultipliers[2];
-        
+                                                (long)upgradeManager.globalMultipliers[2];
+
         AddCurrency(CurrencyType.BankedStep, 0);
     }
 

@@ -12,10 +12,21 @@ public class JobManager : MonoSingleton<JobManager>
     public ActiveJobSaveData activeJob;
     public int completedJobCount = 0;
     private UIManager uiManager;
+    private CurrencyManager currencyManager;
+    private UpgradeManager upgradeManager;
+    private ExperienceManager experienceManager;
+
+    private void Awake()
+    {
+        uiManager = UIManager.instance;
+        currencyManager = CurrencyManager.instance;
+        upgradeManager = UpgradeManager.instance;
+        experienceManager = ExperienceManager.instance;
+    }
     
     private IEnumerator Start()
     {
-        uiManager = UIManager.instance;
+        
         CreateJob();
         activeJob = JobSaveManager.LoadJob();
         if (activeJob != null)
@@ -55,8 +66,8 @@ public class JobManager : MonoSingleton<JobManager>
 
         job.fuelCost = job.distance * 10 * Random.Range(10, 15);
         job.reward = job.distance * Random.Range(10,15) / 3;
-        job.reward = (long)(job.reward * UpgradeManager.instance.globalMultipliers[(int)UpgradeType.IncomeMultiplier]);
-        job.fuelCost = (long)(job.fuelCost / UpgradeManager.instance.globalMultipliers[(int)UpgradeType.FuelEfficiency]);
+        job.reward = (long)(job.reward * upgradeManager.globalMultipliers[(int)UpgradeType.IncomeMultiplier]);
+        job.fuelCost = (long)(job.fuelCost / upgradeManager.globalMultipliers[(int)UpgradeType.FuelEfficiency]);
         uiManager.AddJob(job);
     }
 
@@ -79,8 +90,8 @@ public class JobManager : MonoSingleton<JobManager>
         if (isSuccess)
         {
             completedJobCount++;
-            ExperienceManager.instance.AddExperience(activeJob.jobData.distance * 10);
-            CurrencyManager.instance.AddCurrency(CurrencyType.Coin, activeJob.jobData.reward);
+            experienceManager.AddExperience(activeJob.jobData.distance * 10);
+            currencyManager.AddCurrency(CurrencyType.Coin, activeJob.jobData.reward);
             uiManager.UpdateCompletedJobCount(completedJobCount);
         }
         
@@ -100,11 +111,11 @@ public class JobManager : MonoSingleton<JobManager>
                 if (activeJob.stepsLeft >= 0)
                 {
                     var bankedStepsToBurn = Math.Clamp(amount, 0,
-                        Math.Min(CurrencyManager.instance.GetCurrencyAmount(CurrencyType.BankedStep),
+                        Math.Min(currencyManager.GetCurrencyAmount(CurrencyType.BankedStep),
                             activeJob.stepsLeft));
                     
                     activeJob.stepsLeft -= bankedStepsToBurn;
-                    CurrencyManager.instance.AddCurrency(CurrencyType.BankedStep, -bankedStepsToBurn);
+                    currencyManager.AddCurrency(CurrencyType.BankedStep, -bankedStepsToBurn);
                 }
                 
                 uiManager.UpdateActiveJobStatus();
@@ -126,7 +137,7 @@ public class JobManager : MonoSingleton<JobManager>
 
     private void RegisterBankedSteps(long amount)
     {
-        CurrencyManager.instance.AddCurrency(CurrencyType.BankedStep, amount);
+        currencyManager.AddCurrency(CurrencyType.BankedStep, amount);
     }
 
     private void OnApplicationPause(bool pauseStatus)
