@@ -136,43 +136,62 @@ public class RecordingApiManager : MonoSingleton<RecordingApiManager>
 // --- THE TEST FUNCTION (Hook this to your UI Button) ---
     public void TestLast7DaysData()
     {
-        Debug.Log("--- INITIATING RECORDING API BUCKET TEST ---");
+        Debug.Log("--- INITIATING STRICT-SNAP RECORDING API TEST ---");
 
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-        long endUnix = now.ToUnixTimeSeconds();
+        // Get the absolute current Unix time in seconds
+        long nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        // 1. Math for Hourly Snapping (Floor to XX:00:00)
-        DateTimeOffset topOfHour = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, 0, 0, now.Offset);
-        long startUnix7Days = topOfHour.AddDays(-7).ToUnixTimeSeconds();
+        // 1. STRICT 15-MIN MATH (Modulo 900 seconds)
+        // This physically forces the start time to XX:00, XX:15, XX:30, or XX:45
+        long startUnix15Min = nowUnix - (nowUnix % 900) - (12 * 3600); // Back 12 hours
+        long endUnix15Min = nowUnix - (nowUnix % 900) + 900;           // Include current ongoing block
 
-        // 2. Math for 15-Min Snapping (Floor to XX:00, XX:15, XX:30, XX:45)
-        int flooredMinute = (now.Minute / 15) * 15;
-        DateTimeOffset topOf15Min = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, flooredMinute, 0, now.Offset);
-        long startUnix12Hours = topOf15Min.AddHours(-12).ToUnixTimeSeconds();
+        // 2. STRICT HOURLY MATH (Modulo 3600 seconds)
+        // Forces start time to exactly XX:00:00
+        long startUnixHours = nowUnix - (nowUnix % 3600) - (7 * 24 * 3600); // Back 7 Days
+        long endUnixHours = nowUnix - (nowUnix % 3600) + 3600;              // Include current hour
 
-        // Fire the Hourly Request (Last 7 Days)
-        ReadStepData(startUnix7Days, endUnix, 1, BucketUnit.Hours, (Dictionary<long, int> hourlyLogs) => {
-            Debug.Log($"\n=== HOURLY BUCKETS (Last 7 Days) | Found {hourlyLogs.Count} active hours ===");
-            foreach (var log in hourlyLogs)
-            {
-                DateTime startTime = DateTimeOffset.FromUnixTimeSeconds(log.Key).LocalDateTime;
-                DateTime endTime = startTime.AddHours(1); 
-                
-                // Format: 2026-03-11 11:00-12:00
-                Debug.Log($"[HOURLY] {startTime:yyyy-MM-dd HH:mm}-{endTime:HH:mm} | Steps: {log.Value}");
-            }
-        });
+        // 3. STRICT DAILY MATH (Modulo 86400 seconds)
+        // We add local timezone offset first so "midnight" aligns with your physical clock, not London's.
+        long localOffsetSeconds = (long)DateTimeOffset.Now.Offset.TotalSeconds;
+        long localNowUnix = nowUnix + localOffsetSeconds;
+        
+        long startLocalUnixDays = localNowUnix - (localNowUnix % 86400) - (7 * 86400); 
+        long startUnixDays = startLocalUnixDays - localOffsetSeconds; // Convert back to UTC for the API
+        long endUnixDays = startUnixDays + (8 * 86400);               // Include today fully
 
-        // Fire the Aggressive 15-Minute Request (Last 12 Hours Only)
-        ReadStepData(startUnix12Hours, endUnix, 15, BucketUnit.Minutes, (Dictionary<long, int> minLogs) => {
+        // --- FIRE THE QUERIES ---
+
+        // 15-Minute Request
+        ReadStepData(startUnix15Min, endUnix15Min, 15, BucketUnit.Minutes, (Dictionary<long, int> minLogs) => {
             Debug.Log($"\n=== 15-MINUTE BUCKETS (Last 12 Hours) | Found {minLogs.Count} active intervals ===");
             foreach (var log in minLogs)
             {
                 DateTime startTime = DateTimeOffset.FromUnixTimeSeconds(log.Key).LocalDateTime;
                 DateTime endTime = startTime.AddMinutes(15); 
-                
-                // Format: 2026-03-11 11:00-11:15
                 Debug.Log($"[15-MIN] {startTime:yyyy-MM-dd HH:mm}-{endTime:HH:mm} | Steps: {log.Value}");
+            }
+        });
+
+        // Hourly Request
+        ReadStepData(startUnixHours, endUnixHours, 1, BucketUnit.Hours, (Dictionary<long, int> hourlyLogs) => {
+            Debug.Log($"\n=== HOURLY BUCKETS (Last 7 Days) | Found {hourlyLogs.Count} active hours ===");
+            foreach (var log in hourlyLogs)
+            {
+                DateTime startTime = DateTimeOffset.FromUnixTimeSeconds(log.Key).LocalDateTime;
+                DateTime endTime = startTime.AddHours(1); 
+                Debug.Log($"[HOURLY] {startTime:yyyy-MM-dd HH:mm}-{endTime:HH:mm} | Steps: {log.Value}");
+            }
+        });
+
+        // Daily Request
+        ReadStepData(startUnixDays, endUnixDays, 1, BucketUnit.Days, (Dictionary<long, int> dailyLogs) => {
+            Debug.Log($"\n=== DAILY BUCKETS (Midnight to Midnight) | Found {dailyLogs.Count} active days ===");
+            foreach (var log in dailyLogs)
+            {
+                DateTime startTime = DateTimeOffset.FromUnixTimeSeconds(log.Key).LocalDateTime;
+                // For daily, we just print the date it belongs to
+                Debug.Log($"[DAILY] {startTime:yyyy-MM-dd} | Steps: {log.Value}");
             }
         });
     }
