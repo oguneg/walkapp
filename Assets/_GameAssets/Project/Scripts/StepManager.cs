@@ -58,7 +58,7 @@ public class StepManager : MonoSingleton<StepManager>
         {
             Debug.Log($"Sensor woke up in {timer:F2} seconds!");
         }
-        
+        RecordingApiManager.instance.InitializeRecordingAPI();
         LoadSteps();
         yield return null;
         StartCoroutine(UpdateRoutine());
