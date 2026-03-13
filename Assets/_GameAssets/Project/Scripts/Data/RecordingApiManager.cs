@@ -246,32 +246,55 @@ public class RecordingApiManager : MonoSingleton<RecordingApiManager>
 
         int[] dailyStepCounts =  new int[7];
         int[] hourlyStepCounts =  new int[24];
-        /*
+        long[] dailyQueryStartTimes = new long[7];
+        long[] dailyQueryEndTimes = new long[7];
+        long[] hourlyQueryStartTimes = new long[24];
+        long[] hourlyQueryEndTimes = new long[24];
+        
         for (int i = 0; i < 7; i++)
         {
-            GetTotalStepsInRange(endUnixDays - 86400 * i, endUnixDays - 86400 - 86400 * i, result =>
+            var i1 = i;
+            GetTotalStepsInRange(endUnixDays - 86400 - 86400 * i, endUnixDays - 86400 * i, result =>
             {
-                dailyStepCounts[i] = result;
+                dailyStepCounts[6-i1] = result;
+                dailyQueryStartTimes[6-i1] = endUnixDays - 86400 - 86400 * i1;
+                dailyQueryEndTimes[6-i1] = endUnixDays - 86400 * i1;
+                StringBuilder sbDay =  new StringBuilder();
+                for (int j = 0; j < 7; j++)
+                {
+                    sbDay.Append($"{GetStringFromUnix(dailyQueryStartTimes[j])} - {GetStringFromUnix(dailyQueryEndTimes[j])} : {dailyStepCounts[j]} steps");
+                    sbDay.AppendLine();
+                }
+        
+                last7DaysText.text = sbDay.ToString();
             });
-        }*/
+        }
         
         for (int i = 0; i < 24; i++)
         {
             var i1 = i;
             GetTotalStepsInRange(endUnixDays - 3600 - 3600 * i, endUnixDays - 3600 * i, result =>
             {
+                hourlyQueryStartTimes[23-i1] = endUnixDays - 3600 - 3600 * i1;
+                hourlyQueryEndTimes[23-i1] = endUnixDays - 3600 * i1;
                 hourlyStepCounts[23-i1] = result;
                 
                 StringBuilder sbHour =  new StringBuilder();
-                for (int i = 0; i < 24; i++)
+                for (int j = 0; j < 24; j++)
                 {
-                    sbHour.Append($"{i} - {hourlyStepCounts[i]} steps");
+                    sbHour.Append($"{GetStringFromUnix(hourlyQueryStartTimes[j])} - {GetStringFromUnix(hourlyQueryEndTimes[j])} : {hourlyStepCounts[j]} steps");
                     sbHour.AppendLine();
                 }
         
                 last24HoursText.text = sbHour.ToString();
             });
         }
+    }
+
+    private string GetStringFromUnix(long unix)
+    {
+        //return DateTimeOffset.FromUnixTimeSeconds(unix).LocalDateTime.ToString("yyyy-MM-dd HH:mm");
+        return DateTimeOffset.FromUnixTimeSeconds(unix).LocalDateTime.ToString("MM-dd HH:mm");
     }
     
     // Call this to get a single total step count for a specific timeframe
@@ -303,7 +326,7 @@ public class RecordingApiManager : MonoSingleton<RecordingApiManager>
 
             AndroidJavaObject builder = new AndroidJavaObject("com.google.android.gms.fitness.request.LocalDataReadRequest$Builder");
             builder.Call<AndroidJavaObject>("aggregate", typeStepCountDelta);
-            builder.Call<AndroidJavaObject>("bucketByTime", 1, minutesUnit);
+            builder.Call<AndroidJavaObject>("bucketByTime", 60, minutesUnit);
             builder.Call<AndroidJavaObject>("setTimeRange", startTimeUnixSeconds, endTimeUnixSeconds, secondsUnit);
             
             AndroidJavaObject readRequest = builder.Call<AndroidJavaObject>("build");
