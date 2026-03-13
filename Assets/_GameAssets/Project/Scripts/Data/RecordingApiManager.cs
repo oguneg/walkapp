@@ -326,7 +326,9 @@ public class RecordingApiManager : MonoSingleton<RecordingApiManager>
 
             AndroidJavaObject builder = new AndroidJavaObject("com.google.android.gms.fitness.request.LocalDataReadRequest$Builder");
             builder.Call<AndroidJavaObject>("aggregate", typeStepCountDelta);
-            builder.Call<AndroidJavaObject>("bucketByTime", 60, minutesUnit);
+            //builder.Call<AndroidJavaObject>("bucketByTime", 15, minutesUnit);
+            long durationSeconds = endTimeUnixSeconds - startTimeUnixSeconds;
+            builder.Call<AndroidJavaObject>("bucketByTime", (int)durationSeconds, secondsUnit);
             builder.Call<AndroidJavaObject>("setTimeRange", startTimeUnixSeconds, endTimeUnixSeconds, secondsUnit);
             
             AndroidJavaObject readRequest = builder.Call<AndroidJavaObject>("build");
