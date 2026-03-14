@@ -35,9 +35,9 @@ namespace OgunWorks.UI
             jobTypeText.text = job.jobData.jobType.ToString();
             cargoTypeText.text = job.jobData.cargoType.ToString();
             distanceText.text = $"{job.jobData.distance}km";
-            stepsText.text = $"{job.jobData.steps:N0} steps";
-            fuelCostText.text = $"{job.jobData.fuelCost / 1000} fuel";
-            rewardText.text = $"${job.jobData.reward:N0}";
+            stepsText.text = $"<sprite=1>{job.jobData.steps:N0}";
+            fuelCostText.text = $"<sprite=4>{job.jobData.fuelCost / 1000}";
+            rewardText.text = $"<sprite=0>{job.jobData.reward:N0}";
 
             int hours = job.jobData.timeInMinutes / 60;
             int minutes = job.jobData.timeInMinutes % 60;
@@ -161,7 +161,7 @@ namespace OgunWorks.UI
         private void CheckForCompletion()
         {
             stepsLeft = assignedJob.stepsLeft;
-            stepsLeftText.text = $"{stepsLeft:N0} steps left";
+            stepsLeftText.text = $"{stepsLeft:N0}<sprite=1> left";
             UpdateStepsLeft();
             if (stepsLeft <= 0)
             {

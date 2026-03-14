@@ -17,13 +17,13 @@ namespace OgunWorks.UI
             assignedJob = job;
             isEmpty = false;
             jobTypeText.text = job.jobType.ToString();
-            incomePerStepText.text = $"${job.reward * 1f / job.steps :F2}/step";
-            incomePerFuelText.text = $"${job.reward * 1f / (job.fuelCost/1000) :F2}/fuel";
+            incomePerStepText.text = $"<sprite=0>{job.reward * 1f / job.steps :F2} per <sprite=1>";
+            incomePerFuelText.text = $"<sprite=0>{job.reward * 1f / (job.fuelCost/1000) :F2} per <sprite=4>";
             cargoTypeText.text = job.cargoType.ToString();
-            costText.text = $"{job.fuelCost / 1000} fuel";
-            rewardText.text = $"${job.reward:N0}";
+            costText.text = $"-<sprite=4>{job.fuelCost / 1000}";
+            rewardText.text = $"<sprite=0>{job.reward:N0}";
             distanceText.text = $"{job.distance}km";
-            stepsText.text = $"{job.steps:N0} steps";
+            stepsText.text = $"<sprite=1>{job.steps:N0}";
             
             int hours = job.timeInMinutes / 60;
             int minutes = job.timeInMinutes % 60;

@@ -17,9 +17,9 @@ public class CurrencyPanel : MonoBehaviour
     {
         switch (currencyType)
         {
-            case CurrencyType.Fuel: fuelText.text = $"fuel {currencyAmount/1000}/{fuelCap/1000}"; break;
-            case CurrencyType.BankedStep: bankedStepText.text = $"Banked Steps{Environment.NewLine}{currencyAmount:N0}/{CurrencyManager.instance.GetCurrencyCap(CurrencyType.BankedStep):N0}"; break;
-            case CurrencyType.Coin: currencyText.text = $"cash ${currencyAmount:N0}"; break;
+            case CurrencyType.Fuel: fuelText.text = $"<sprite=4>{currencyAmount/1000}/{fuelCap/1000}"; break;
+            case CurrencyType.BankedStep: bankedStepText.text = $"Banked Steps{Environment.NewLine}<sprite=1>{currencyAmount:N0}/{CurrencyManager.instance.GetCurrencyCap(CurrencyType.BankedStep):N0}"; break;
+            case CurrencyType.Coin: currencyText.text = $"<sprite=0>{currencyAmount:N0}"; break;
             default: break;
         }
     }
