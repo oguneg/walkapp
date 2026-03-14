@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using OgunWorks.UI;
 using TMPro;
@@ -11,7 +12,11 @@ public class UIManager : MonoSingleton<UIManager>
     [SerializeField] private ActiveJobView activeJobView;
     [SerializeField] private TextMeshProUGUI completedJobsText;
     [SerializeField] private TextMeshProUGUI bankedStepsText;
+    [SerializeField] private RectTransform tabPos, tabLeftPos, tabRightPos;
+
+    private const float tabMoveSpeed = 0.2f;
     
+    private int activeTabIndex;
     private TabButtonView activeTabButton;
     private TabView activeTab;
     private void Start()
@@ -20,11 +25,12 @@ public class UIManager : MonoSingleton<UIManager>
         {
             tabButton.OnButtonClicked += OnTabButtonClicked;
         }
-
+        
         foreach (var tab in tabs)
         {
-            tab.transform.localPosition = new Vector3(0,tab.transform.localPosition.y);
+            tab.transform.localPosition = tabPos.localPosition;
             tab.Deactivate();
+            tab.gameObject.SetActive(false);
         }
         
         OnTabButtonClicked(tabButtons[2]);
@@ -42,8 +48,25 @@ public class UIManager : MonoSingleton<UIManager>
     private void ActivateTab(TabType tabType)
     {
         activeTab?.Deactivate();
+        this.DOKill();
+        var isComingFromRight = (int)tabType >= activeTabIndex;
+        ShowTab(tabs[(int)tabType], isComingFromRight);
+        HideTab(activeTab, !isComingFromRight);
         activeTab = tabs[(int)tabType];
         activeTab.Activate();
+        activeTabIndex = (int)tabType;
+    }
+
+    private void ShowTab(TabView tab, bool isComingFromRight)
+    {
+        tab.transform.position = (isComingFromRight ? tabRightPos : tabLeftPos).position;
+        tab.gameObject.SetActive(true);
+        tab.transform.DOMove(tabPos.position, tabMoveSpeed).SetEase(Ease.InOutSine).SetTarget(this);
+    }
+
+    private void HideTab(TabView tab, bool isGoingRight)
+    {
+        tab?.transform.DOMove((isGoingRight ? tabRightPos : tabLeftPos).position, tabMoveSpeed).SetEase(Ease.InOutSine).SetTarget(this).OnComplete(()=>tab.gameObject.SetActive(false));
     }
 
     public void ForceTab(TabType tabType)

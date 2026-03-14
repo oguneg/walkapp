@@ -8,12 +8,12 @@ namespace OgunWorks.UI
 
         public void Activate()
         {
-            gameObject.SetActive(true);
+            //gameObject.SetActive(true);
         }
 
         public void Deactivate()
         {
-            gameObject.SetActive(false);
+            //gameObject.SetActive(false);
         }
     }
 }
