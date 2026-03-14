@@ -7,7 +7,7 @@ namespace OgunWorks.UI
 {
     public class JobOfferView : MonoBehaviour
     {
-        [SerializeField] private TextMeshProUGUI jobTypeText, cargoTypeText, incomePerStepText, incomePerFuelText, distanceText, stepsText, timeText, costText, rewardText;
+        [SerializeField] private TextMeshProUGUI jobTypeText, cargoTypeText, incomePerStepText, incomePerFuelText, distanceText, expRewardText, stepsText, timeText, costText, rewardText;
         public UnityAction<JobOfferView, bool> OnJobResponse;
         public JobData assignedJob = null;
         public bool isEmpty = true;
@@ -20,9 +20,10 @@ namespace OgunWorks.UI
             incomePerStepText.text = $"<sprite=0>{job.reward * 1f / job.steps :F2} per <sprite=1>";
             incomePerFuelText.text = $"<sprite=0>{job.reward * 1f / (job.fuelCost/1000) :F2} per <sprite=4>";
             cargoTypeText.text = job.cargoType.ToString();
-            costText.text = $"-<sprite=4>{job.fuelCost / 1000}";
+            costText.text = $"<sprite=4>{job.fuelCost / 1000}";
             rewardText.text = $"<sprite=0>{job.reward:N0}";
             distanceText.text = $"{job.distance}km";
+            expRewardText.text = $"<sprite=3>{job.experience}";
             stepsText.text = $"<sprite=1>{job.steps:N0}";
             
             int hours = job.timeInMinutes / 60;

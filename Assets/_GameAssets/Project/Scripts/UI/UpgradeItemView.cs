@@ -14,7 +14,6 @@ public class UpgradeItemView : MonoBehaviour
     {
         assignedUpgrade = upgrade;
         upgradeNameText.text = upgrade.upgradeName;
-        upgradeCostText.text = $"${upgrade.baseCost:N0}";
         upgradeDescriptionText.text = $"{upgrade.upgradeEffects[0].type} {(upgrade.upgradeEffects[0].isMultiplicative?'x':'+')}{upgrade.upgradeEffects[0].increaseValue}";
         LoadUpgradeLevel();
         CalculateCost();
@@ -35,7 +34,7 @@ public class UpgradeItemView : MonoBehaviour
     private void CalculateCost()
     {
         upgradeCost = (long)(Math.Pow(assignedUpgrade.costExponent, upgradeLevel) * assignedUpgrade.baseCost);
-        upgradeCostText.text = $"${upgradeCost:N0}";
+        upgradeCostText.text = $"<sprite=0>{upgradeCost:N0}";
     }
 
     public void OnBuyButtonClick()

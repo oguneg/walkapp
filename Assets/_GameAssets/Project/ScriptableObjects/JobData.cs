@@ -8,6 +8,7 @@ public class JobData
     public int distance;
     public int steps;
     public int timeInMinutes;
+    public int experience;
     public long fuelCost;
     public long reward;
 }
