@@ -29,13 +29,13 @@ public partial class SROptions
     [Category("Test")]
     public void Add100Steps()
     {
-        JobManager.instance.RegisterSteps(100, false);
+        JobManager.instance.RegisterSteps(100);
     }
     
     [Category("Test")]
     public void Add1000Steps()
     {
-        JobManager.instance.RegisterSteps(1000, false);
+        JobManager.instance.RegisterSteps(1000);
     }
     
     [Category("Test")]

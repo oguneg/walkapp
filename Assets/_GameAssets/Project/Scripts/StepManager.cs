@@ -14,7 +14,7 @@ public class StepManager : MonoSingleton<StepManager>
     public int offlineSteps { get; private set; }
     public int usedOfflineSteps;
     public int bankedOfflineSteps;
-    
+
     public int sessionSteps { get; private set; }
     private int sessionStepsAnchor;
     private int startupHardwareSteps;
@@ -41,7 +41,7 @@ public class StepManager : MonoSingleton<StepManager>
 
         Debug.Log("permission granted");
         InputSystem.EnableDevice(StepCounter.current);
-        
+
         // --- THE DETERMINISTIC WAIT ---
         float timeoutLimit = 10.0f; // Max wait time before giving up
         float timer = 0f;
@@ -50,7 +50,7 @@ public class StepManager : MonoSingleton<StepManager>
         while (StepCounter.current.stepCounter.ReadValue() == 0 && timer < timeoutLimit)
         {
             timer += Time.deltaTime;
-            yield return null; 
+            yield return null;
         }
 
         if (timer >= timeoutLimit)
@@ -61,6 +61,7 @@ public class StepManager : MonoSingleton<StepManager>
         {
             Debug.Log($"Sensor woke up in {timer:F2} seconds!");
         }
+
         RecordingApiManager.instance.InitializeRecordingAPI();
         LoadSteps();
         yield return null;
@@ -85,7 +86,7 @@ public class StepManager : MonoSingleton<StepManager>
             Debug.Log("First run detected! Setting offline steps to 0.");
             offlineSteps = 0;
             totalSteps = 0;
-            
+
             // Immediately lock in the current hardware count as the baseline
             PlayerPrefs.SetInt(LastHardwareStepsKey, startupHardwareSteps);
             PlayerPrefs.SetInt(TotalStepsKey, 0);
@@ -102,7 +103,7 @@ public class StepManager : MonoSingleton<StepManager>
             else
                 offlineSteps = startupHardwareSteps - lastSavedSteps;
         }
-        
+
         RegisterSteps(offlineSteps, true);
         sessionSteps = 0;
         sessionStepsAnchor = 0;
@@ -115,13 +116,21 @@ public class StepManager : MonoSingleton<StepManager>
     {
         if (offlineSteps < 100) return;
         var popup = (PopupOfflineSteps)PopupManager.instance.ShowPopup(PopupType.PopupOfflineSteps);
-        popup.Initialize(offlineSteps, usedOfflineSteps, bankedOfflineSteps, offlineSteps-usedOfflineSteps-bankedOfflineSteps);
+        popup.Initialize(offlineSteps, usedOfflineSteps, bankedOfflineSteps,
+            offlineSteps - usedOfflineSteps - bankedOfflineSteps);
     }
 
     private void RegisterSteps(int amount, bool isOfflineSteps)
     {
         totalSteps += amount;
-        JobManager.instance.RegisterSteps(amount, isOfflineSteps);
+        if (isOfflineSteps)
+        {
+            JobManager.instance.RegisterOfflineSteps(amount);
+        }
+        else
+        {
+            JobManager.instance.RegisterSteps(amount);
+        }
     }
 
     private IEnumerator UpdateRoutine()
@@ -144,12 +153,12 @@ public class StepManager : MonoSingleton<StepManager>
         sessionStepsAnchor = sessionSteps;
         UpdateGUI();
     }
-    
+
     void OnApplicationPause(bool isPaused)
     {
         if (!PlayerPrefs.HasKey(LastHardwareStepsKey)) return;
-        
-        if (isPaused) 
+
+        if (isPaused)
         {
             SaveState();
         }
@@ -174,7 +183,7 @@ public class StepManager : MonoSingleton<StepManager>
 
         // Wait a tiny, deterministic amount of frames for the OS to push the updated number.
         // We use frames instead of seconds so it scales to the device's speed.
-        for (int i = 0; i < 5; i++) 
+        for (int i = 0; i < 5; i++)
         {
             yield return null;
         }

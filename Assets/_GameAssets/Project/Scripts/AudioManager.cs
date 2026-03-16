@@ -23,9 +23,9 @@ public class AudioManager : MonoSingleton<AudioManager>
         if (intensity == 0) yield break;
         if (intensity > 100) intensity = 100;
 
-        if (intensity / duration > 50)
+        if (intensity / duration > 35)
         {
-            intensity = (int)(duration * 50);
+            intensity = (int)(duration * 35);
         }
         
         var wfs = new WaitForSeconds(duration / intensity);
