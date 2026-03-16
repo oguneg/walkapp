@@ -12,6 +12,9 @@ public class StepManager : MonoSingleton<StepManager>
     public int totalSteps { get; private set; }
     public int readSteps { get; private set; }
     public int offlineSteps { get; private set; }
+    public int usedOfflineSteps;
+    public int bankedOfflineSteps;
+    
     public int sessionSteps { get; private set; }
     private int sessionStepsAnchor;
     private int startupHardwareSteps;
@@ -100,17 +103,25 @@ public class StepManager : MonoSingleton<StepManager>
                 offlineSteps = startupHardwareSteps - lastSavedSteps;
         }
         
-        RegisterSteps(offlineSteps);
+        RegisterSteps(offlineSteps, true);
         sessionSteps = 0;
         sessionStepsAnchor = 0;
 
         UpdateGUI();
+        ShowPopup();
     }
 
-    private void RegisterSteps(int amount)
+    private void ShowPopup()
+    {
+        if (offlineSteps < 100) return;
+        var popup = (PopupOfflineSteps)PopupManager.instance.ShowPopup(PopupType.PopupOfflineSteps);
+        popup.Initialize(offlineSteps, usedOfflineSteps, bankedOfflineSteps, offlineSteps-usedOfflineSteps-bankedOfflineSteps);
+    }
+
+    private void RegisterSteps(int amount, bool isOfflineSteps)
     {
         totalSteps += amount;
-        JobManager.instance.RegisterSteps(amount);
+        JobManager.instance.RegisterSteps(amount, isOfflineSteps);
     }
 
     private IEnumerator UpdateRoutine()
@@ -126,10 +137,10 @@ public class StepManager : MonoSingleton<StepManager>
 
     void FetchLiveSteps()
     {
-        Debug.Log("fetching live steps");
+        //Debug.Log("fetching live steps");
         readSteps = StepCounter.current.stepCounter.ReadValue();
         sessionSteps = StepCounter.current.stepCounter.ReadValue() - startupHardwareSteps;
-        RegisterSteps(sessionSteps - sessionStepsAnchor);
+        RegisterSteps(sessionSteps - sessionStepsAnchor, false);
         sessionStepsAnchor = sessionSteps;
         UpdateGUI();
     }
@@ -197,5 +208,16 @@ public class StepManager : MonoSingleton<StepManager>
     {
         if (StepCounter.current != null)
             InputSystem.DisableDevice(StepCounter.current);
+    }
+
+    public void TestOfflineSteps(int steps)
+    {
+        offlineSteps = steps;
+        RegisterSteps(offlineSteps, true);
+        sessionSteps = 0;
+        sessionStepsAnchor = 0;
+
+        UpdateGUI();
+        ShowPopup();
     }
 }

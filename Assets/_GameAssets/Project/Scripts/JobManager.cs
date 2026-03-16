@@ -23,16 +23,16 @@ public class JobManager : MonoSingleton<JobManager>
         upgradeManager = UpgradeManager.instance;
         experienceManager = ExperienceManager.instance;
     }
-    
+
     private IEnumerator Start()
     {
-        
         CreateJob();
         activeJob = JobSaveManager.LoadJob();
         if (activeJob != null)
         {
             DisplayActiveJob();
         }
+
         while (true)
         {
             CreateJob();
@@ -47,26 +47,26 @@ public class JobManager : MonoSingleton<JobManager>
         job.jobType = (JobType)Random.Range(0, 3);
         switch (job.jobType)
         {
-            case JobType.Short :
+            case JobType.Short:
                 job.distance = Random.Range(15, 51);
                 job.steps = job.distance * 3;
                 job.timeInMinutes = job.steps / 10;
                 break;
-            case JobType.Medium : 
+            case JobType.Medium:
                 job.distance = Random.Range(15, 50) * 10;
                 job.steps = job.distance * 3;
-                job.timeInMinutes = Random.Range(2,7) * 30;
+                job.timeInMinutes = Random.Range(2, 7) * 30;
                 break;
-            case JobType.Long : 
+            case JobType.Long:
                 job.distance = Random.Range(9, 41) * 100;
                 job.steps = job.distance * 3;
-                job.timeInMinutes = Random.Range(3,12) * 180;
+                job.timeInMinutes = Random.Range(3, 12) * 180;
                 break;
         }
 
         job.fuelCost = job.distance * 10 * Random.Range(10, 15);
         job.experience = job.distance * 10;
-        job.reward = job.distance * Random.Range(10,15) / 3;
+        job.reward = job.distance * Random.Range(10, 15) / 3;
         job.reward = (long)(job.reward * upgradeManager.globalMultipliers[(int)UpgradeType.IncomeMultiplier]);
         job.fuelCost = (long)(job.fuelCost / upgradeManager.globalMultipliers[(int)UpgradeType.FuelEfficiency]);
         uiManager.AddJob(job);
@@ -85,7 +85,7 @@ public class JobManager : MonoSingleton<JobManager>
     {
         uiManager.DisplayActiveJob(activeJob);
     }
-    
+
     public void EndJob(bool isSuccess)
     {
         if (isSuccess)
@@ -95,12 +95,12 @@ public class JobManager : MonoSingleton<JobManager>
             currencyManager.AddCurrency(CurrencyType.Coin, activeJob.jobData.reward);
             uiManager.UpdateCompletedJobCount(completedJobCount);
         }
-        
+
         activeJob = null;
         JobSaveManager.ClearJob();
     }
 
-    public void RegisterSteps(int amount)
+    public void RegisterSteps(int amount, bool isOfflineSteps)
     {
         if (activeJob != null)
         {
@@ -109,31 +109,48 @@ public class JobManager : MonoSingleton<JobManager>
                 var leftoverSteps = amount - activeJob.stepsLeft;
                 var stepsLeft = activeJob.stepsLeft;
                 activeJob.stepsLeft -= amount;
+                if (isOfflineSteps)
+                {
+                    ReportActiveSteps((int)Math.Min(amount, stepsLeft));
+                }
                 if (activeJob.stepsLeft >= 0)
                 {
                     var bankedStepsToBurn = Math.Clamp(amount, 0,
                         Math.Min(currencyManager.GetCurrencyAmount(CurrencyType.BankedStep),
                             activeJob.stepsLeft));
-                    
+
                     activeJob.stepsLeft -= bankedStepsToBurn;
                     currencyManager.AddCurrency(CurrencyType.BankedStep, -bankedStepsToBurn);
                 }
-                
+
                 uiManager.UpdateActiveJobStatus();
                 if (activeJob.stepsLeft <= 0)
                 {
+                    if (isOfflineSteps) ReportBankedSteps((int)leftoverSteps);
                     RegisterBankedSteps(leftoverSteps);
                 }
             }
             else
             {
+                if (isOfflineSteps) ReportBankedSteps(amount);
                 RegisterBankedSteps(amount);
             }
         }
         else
         {
+            if (isOfflineSteps) ReportBankedSteps(amount);
             RegisterBankedSteps(amount);
         }
+    }
+
+    private void ReportBankedSteps(int amount)
+    {
+        var bankableAmount = currencyManager.GetCurrencyCap(CurrencyType.BankedStep) - currencyManager.GetCurrencyAmount(CurrencyType.BankedStep);
+        StepManager.instance.bankedOfflineSteps = (int)bankableAmount;
+    }
+    private void ReportActiveSteps(int amount)
+    {
+        StepManager.instance.usedOfflineSteps = amount;
     }
 
     private void RegisterBankedSteps(long amount)

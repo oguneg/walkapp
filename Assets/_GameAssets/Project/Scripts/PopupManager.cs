@@ -1,16 +1,54 @@
+using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
+using UnityEngine.UI;
 
-public class PopupManager : MonoBehaviour
+public class PopupManager : MonoSingleton<PopupManager>
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    [SerializeField] private Image popupBG;
+
+    [SerializeField] private List<PopupBase> popups;
+    private const float popupBGFadeAmount = 0.6f;
+    private const float popupBGFadeTime = 0.2f;
+
+    public void ShowBasePopup()
     {
-        
+        ShowPopup(PopupType.PopupBase);
     }
 
-    // Update is called once per frame
-    void Update()
+    public PopupBase ShowPopup(PopupType popupType)
     {
-        
+        var popup = popups.Find(x => x.popupType == popupType);
+        ShowBG();
+        popup.ShowPopup();
+        return popup;
     }
+
+    public void HidePopup()
+    {
+        HideBG();
+    }
+
+    private void ShowBG()
+    {
+        popupBG.raycastTarget = true;
+        popupBG.DOFade(popupBGFadeAmount, popupBGFadeTime).SetEase(Ease.InOutSine);
+        popupBG.enabled = true;
+    }
+
+    private void HideBG()
+    {
+        popupBG.DOFade(0, popupBGFadeTime).SetEase(Ease.InOutSine).OnComplete(() =>
+        {
+            popupBG.raycastTarget = false;
+            popupBG.enabled = false;
+        });
+    }
+}
+
+public enum PopupType
+{
+    PopupBase,
+    PopupJobComplete,
+    PopupOfflineSteps
 }
