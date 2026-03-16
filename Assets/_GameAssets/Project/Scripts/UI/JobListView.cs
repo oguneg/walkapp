@@ -48,11 +48,13 @@ public class JobListView : MonoBehaviour
         JobManager.instance.AcceptJob(jobOfferView.assignedJob);
         jobOfferView.Deactivate();
         activeJobCount--;
+        AudioManager.instance.PlaySound(SoundType.Button);
     }
 
     private void OnJobRemoved(JobOfferView jobOfferView)
     {
         jobOfferView.Deactivate();
         activeJobCount--;
+        AudioManager.instance.PlaySound(SoundType.Button);
     }
 }

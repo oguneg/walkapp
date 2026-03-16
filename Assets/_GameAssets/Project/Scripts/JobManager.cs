@@ -120,6 +120,7 @@ public class JobManager : MonoSingleton<JobManager>
                             activeJob.stepsLeft));
 
                     activeJob.stepsLeft -= bankedStepsToBurn;
+                    ReportActiveSteps((int)Math.Min(amount, stepsLeft-bankedStepsToBurn));
                     currencyManager.AddCurrency(CurrencyType.BankedStep, -bankedStepsToBurn);
                 }
 

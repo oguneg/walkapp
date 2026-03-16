@@ -47,6 +47,7 @@ public class UpgradeItemView : MonoBehaviour
             var upgradeEffect = assignedUpgrade.upgradeEffects[0];
             UpgradeManager.instance.UpdateMultiplier(upgradeEffect.type, upgradeEffect.increaseValue, upgradeEffect.isMultiplicative);
             CalculateCost();
+            AudioManager.instance.PlaySound(SoundType.Button);        
         }
     }
 }

@@ -61,6 +61,7 @@ public class UIManager : MonoSingleton<UIManager>
     {
         tab.transform.position = (isComingFromRight ? tabRightPos : tabLeftPos).position;
         tab.gameObject.SetActive(true);
+        AudioManager.instance.PlaySound(SoundType.Swipe);
         tab.transform.DOMove(tabPos.position, tabMoveSpeed).SetEase(Ease.InOutSine).SetTarget(this);
     }
 
@@ -92,6 +93,7 @@ public class UIManager : MonoSingleton<UIManager>
 
     public void OnActiveJobResponse(ActiveJobView jobView, bool response)
     {
+        AudioManager.instance.PlaySound(response?SoundType.Success:SoundType.Fail);
         JobManager.instance.EndJob(response);
         jobView.ClearJobView();
         SetActiveJobTabButtonNotificationLight(false);

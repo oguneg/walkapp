@@ -8,7 +8,7 @@ public class PopupManager : MonoSingleton<PopupManager>
     [SerializeField] private Image popupBG;
 
     [SerializeField] private List<PopupBase> popups;
-    private const float popupBGFadeAmount = 0.6f;
+    private const float popupBGFadeAmount = 0.8f;
     private const float popupBGFadeTime = 0.2f;
 
     public void ShowBasePopup()
@@ -20,12 +20,14 @@ public class PopupManager : MonoSingleton<PopupManager>
     {
         var popup = popups.Find(x => x.popupType == popupType);
         ShowBG();
+        AudioManager.instance.PlaySound(SoundType.Swipe);
         popup.ShowPopup();
         return popup;
     }
 
     public void HidePopup()
     {
+        AudioManager.instance.PlaySound(SoundType.Button);
         HideBG();
     }
 
