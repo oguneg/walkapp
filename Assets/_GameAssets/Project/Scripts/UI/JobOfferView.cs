@@ -1,4 +1,5 @@
 using System;
+using DG.Tweening;
 using UnityEngine;
 using TMPro;
 using UnityEngine.Events;
@@ -38,8 +39,12 @@ namespace OgunWorks.UI
         {
             assignedJob = null;
             isEmpty = true;
-            transform.SetAsLastSibling();
-            gameObject.SetActive(false);
+            transform.DOScale(0, 0.2f).SetEase(Ease.InOutSine).OnComplete(() =>
+            {
+                gameObject.SetActive(false);
+                transform.SetAsLastSibling();
+                transform.localScale = Vector3.one;
+            });
         }
         
         public void OnResponseButton(bool isAccepted)

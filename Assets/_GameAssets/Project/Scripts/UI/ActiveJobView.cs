@@ -177,6 +177,7 @@ namespace OgunWorks.UI
             Debug.Log($"job complete");
             assignedJob.state = JobState.Claimable;
             claimButton.interactable = true;
+            UIManager.instance.SetActiveJobTabButtonNotificationLight(true);
             if (progressRoutine != null)
             {
                 StopCoroutine(progressRoutine);

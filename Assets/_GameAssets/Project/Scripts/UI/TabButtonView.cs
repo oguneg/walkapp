@@ -9,7 +9,7 @@ namespace OgunWorks.UI
         public TabType tabType;
         public UnityAction<TabButtonView> OnButtonClicked;
         [SerializeField] private TextMeshProUGUI textField;
-        
+        [SerializeField] private GameObject notificationDot;        
         public void OnButton()
         {
             OnButtonClicked?.Invoke(this);
@@ -23,6 +23,11 @@ namespace OgunWorks.UI
         public void Deactivate()
         {
             textField.fontStyle = FontStyles.Normal;
+        }
+
+        public void SetNotificationDotStatus(bool isActive)
+        {
+            notificationDot.SetActive(isActive);
         }
     }
 

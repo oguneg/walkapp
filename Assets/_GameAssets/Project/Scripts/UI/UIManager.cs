@@ -13,7 +13,7 @@ public class UIManager : MonoSingleton<UIManager>
     [SerializeField] private TextMeshProUGUI completedJobsText;
     [SerializeField] private TextMeshProUGUI bankedStepsText;
     [SerializeField] private RectTransform tabPos, tabLeftPos, tabRightPos;
-
+    
     private const float tabMoveSpeed = 0.2f;
     
     private int activeTabIndex;
@@ -94,6 +94,12 @@ public class UIManager : MonoSingleton<UIManager>
     {
         JobManager.instance.EndJob(response);
         jobView.ClearJobView();
+        SetActiveJobTabButtonNotificationLight(false);
+    }
+
+    public void SetActiveJobTabButtonNotificationLight(bool isActive)
+    {
+        tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(isActive);
     }
 
     public void UpdateCompletedJobCount(int i)
