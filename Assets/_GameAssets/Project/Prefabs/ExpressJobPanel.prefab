@@ -724,6 +724,7 @@ MonoBehaviour:
   failedColor: {r: 0.65882355, g: 0.28235295, b: 0.24705882, a: 1}
   compactHeight: 300
   fullHeight: 470
+  offerHeight: 350
 --- !u!1 &3615249982672419666
 GameObject:
   m_ObjectHideFlags: 0

@@ -204,8 +204,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Time Left
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ec0c610996f071c419407d304c417e08, type: 2}
+  m_sharedMaterial: {fileID: -287223575250992931, guid: ec0c610996f071c419407d304c417e08, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2788,8 +2788,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: '24 minutes '
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ec0c610996f071c419407d304c417e08, type: 2}
+  m_sharedMaterial: {fileID: -287223575250992931, guid: ec0c610996f071c419407d304c417e08, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3385,8 +3385,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 3 hours
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ec0c610996f071c419407d304c417e08, type: 2}
+  m_sharedMaterial: {fileID: -287223575250992931, guid: ec0c610996f071c419407d304c417e08, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3672,8 +3672,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Progress
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ec0c610996f071c419407d304c417e08, type: 2}
+  m_sharedMaterial: {fileID: -287223575250992931, guid: ec0c610996f071c419407d304c417e08, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

@@ -142,8 +142,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Job List
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 1581638038374ec439fde04578885235, type: 2}
-  m_sharedMaterial: {fileID: -7910886685559414519, guid: 1581638038374ec439fde04578885235, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ec0c610996f071c419407d304c417e08, type: 2}
+  m_sharedMaterial: {fileID: -287223575250992931, guid: ec0c610996f071c419407d304c417e08, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

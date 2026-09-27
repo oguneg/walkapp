@@ -20,26 +20,26 @@ public class PopupOfflineSteps : PopupBase
         if (headerText)
         {
             headerText.text = report.awayFor.HasValue
-                ? $"While you were away <size=70%><color=#6B7A90>{GameClock.FormatDuration(report.awayFor.Value)}</color></size>"
-                : "While you were away...";
+                ? $"Away for <b>{GameClock.FormatDuration(report.awayFor.Value)}</b>"
+                : "";
         }
 
         if (detailText) detailText.text = BuildDetail(a);
 
-        offlineStepsText.text = "<mspace=48>0";
-        activeStepsText.text = "<mspace=44>0";
-        bankedStepsText.text = "<mspace=44>0";
-        wastedStepsText.text = "<mspace=44>0";
+        offlineStepsText.text = "<mspace=0.56em>0";
+        activeStepsText.text = "<mspace=0.56em>0";
+        bankedStepsText.text = "<mspace=0.56em>0";
+        wastedStepsText.text = "<mspace=0.56em>0";
 
         sequence = DOTween.Sequence().SetTarget(this);
         sequence.AppendInterval(0.3f);
-        AppendCount(offlineStepsText, a.total, 48, 2f);
-        AppendCount(activeStepsText, a.toJob, 44, 1f);
-        AppendCount(bankedStepsText, a.toBank, 44, 1f);
-        AppendCount(wastedStepsText, a.overflow, 44, 1f);
+        AppendCount(offlineStepsText, a.total, 2f);
+        AppendCount(activeStepsText, a.toJob, 1f);
+        AppendCount(bankedStepsText, a.toBank, 1f);
+        AppendCount(wastedStepsText, a.overflow, 1f);
     }
 
-    private void AppendCount(TextMeshProUGUI label, long value, int mspace, float duration)
+    private void AppendCount(TextMeshProUGUI label, long value, float duration)
     {
         if (value <= 0)
         {
@@ -49,7 +49,7 @@ public class PopupOfflineSteps : PopupBase
 
         sequence.AppendInterval(0.2f);
         sequence.AppendCallback(() => AudioManager.instance.PlayCount((int)(value / 100), duration));
-        sequence.Append(DOVirtual.Int(0, (int)value, duration, v => label.text = $"<mspace={mspace}>{v:N0}"));
+        sequence.Append(DOVirtual.Int(0, (int)value, duration, v => label.text = $"<mspace=0.56em>{v:N0}"));
     }
 
     private static string BuildDetail(StepAllocation a)

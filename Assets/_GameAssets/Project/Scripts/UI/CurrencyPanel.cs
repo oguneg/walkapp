@@ -28,7 +28,7 @@ public class CurrencyPanel : MonoBehaviour
                 fuelText.text = $"<sprite=4>{currencyAmount / CurrencyManager.FuelUnit}/{cap / CurrencyManager.FuelUnit}";
                 break;
             case CurrencyType.BankedStep:
-                bankedStepText.text = $"Banked Steps{Environment.NewLine}<sprite=1>{currencyAmount:N0}/{manager.GetCurrencyCap(CurrencyType.BankedStep):N0}";
+                bankedStepText.text = $"<size=62%><color=#FFFFFFB0>BANKED STEPS</color></size>{Environment.NewLine}<sprite=1>{currencyAmount:N0}/{manager.GetCurrencyCap(CurrencyType.BankedStep):N0}";
                 break;
             case CurrencyType.Coin:
                 AnimateCoins(currencyAmount);

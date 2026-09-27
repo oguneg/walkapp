@@ -29,6 +29,8 @@ namespace OgunWorks.UI
         [Header("Height (the parent layout group stacks the regular job below)")]
         [SerializeField] private float compactHeight = 300f;
         [SerializeField] private float fullHeight = 470f;
+        [Tooltip("Offers have no progress bar, so the card can be shorter.")]
+        [SerializeField] private float offerHeight = 350f;
 
         private const float GiveUpConfirmSeconds = 3f;
 
@@ -87,7 +89,7 @@ namespace OgunWorks.UI
         private void ShowOffer(ExpressOffer offer)
         {
             lastStatus = null;
-            SetPanel(offerColor, fullHeight);
+            SetPanel(offerColor, offerHeight);
             titleText.text = "EXPRESS OFFER";
             detailText.text = $"{offer.cargoType}: walk <b>{offer.targetSteps:N0}</b> steps\nwithin <b>{offer.durationMinutes} min</b> of accepting";
             timerText.text = GameClock.FormatClock(GameClock.FromUnix(offer.expiresUnix) - GameClock.UtcNow);

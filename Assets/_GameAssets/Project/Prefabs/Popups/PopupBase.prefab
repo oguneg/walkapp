@@ -93,6 +93,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ac6f347ce00e494b8b50721beebd629, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  popupType: 0
 --- !u!1 &2621738067560326623
 GameObject:
   m_ObjectHideFlags: 0
@@ -160,8 +161,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Okay
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 1581638038374ec439fde04578885235, type: 2}
-  m_sharedMaterial: {fileID: -7910886685559414519, guid: 1581638038374ec439fde04578885235, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ec0c610996f071c419407d304c417e08, type: 2}
+  m_sharedMaterial: {fileID: -287223575250992931, guid: ec0c610996f071c419407d304c417e08, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -196,6 +197,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
