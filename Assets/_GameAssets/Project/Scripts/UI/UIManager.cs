@@ -10,6 +10,10 @@ public class UIManager : MonoSingleton<UIManager>
     [SerializeField] private TabView[] tabs;
     [SerializeField] private JobListView jobListView;
     [SerializeField] private ActiveJobView activeJobView;
+    [Tooltip("Express slot on top of the Job List: next offer, dispatcher call, offers to accept.")]
+    [SerializeField] private ExpressJobView expressBoardView;
+    [Tooltip("Express card on the Active tab: an accepted express job until it's claimed or dismissed.")]
+    [SerializeField] private ExpressJobView expressActiveView;
     [SerializeField] private TextMeshProUGUI completedJobsText;
     [SerializeField] private TextMeshProUGUI bankedStepsText;
     [SerializeField] private RectTransform tabPos, tabLeftPos, tabRightPos;
@@ -22,7 +26,6 @@ public class UIManager : MonoSingleton<UIManager>
     private int activeTabIndex;
     private TabButtonView activeTabButton;
     private TabView activeTab;
-    private bool regularJobClaimable;
 
     private void Start()
     {
@@ -43,9 +46,9 @@ public class UIManager : MonoSingleton<UIManager>
 
         var express = ExpressJobManager.instance;
         express.OnOfferCreated += _ => ShowExpressOfferPopup();
-        express.OnChanged += UpdateExpressDot;
+        express.OnChanged += RefreshExpress;
         if (express.HasOffer && !express.OfferSeen) ShowExpressOfferPopup();
-        UpdateExpressDot();
+        RefreshExpress();
 
         DailyBonusManager.instance.OnStarsEarnedToday += (gained, _) =>
             PopupManager.instance.EnqueuePopup(PopupType.PopupStarEarned, p => ((PopupStarEarned)p).Initialize(gained));
@@ -142,25 +145,31 @@ public class UIManager : MonoSingleton<UIManager>
     {
         activeJobView.AssignJob(job);
         activeJobView.OnJobResponse = OnActiveJobResponse;
+        UpdateActiveJobsDot();
     }
 
     public void UpdateActiveJobStatus()
     {
         activeJobView.UpdateStatus();
+        UpdateActiveJobsDot();
     }
 
     /// <summary>No regular job: hide the panel, show the empty state.</summary>
     public void ClearActiveJob()
     {
         activeJobView.ClearJobView();
+        UpdateActiveJobsDot();
     }
 
+    /// <summary>Claim (true) or dismiss/abandon (false) the regular job.</summary>
     public void OnActiveJobResponse(ActiveJobView jobView, bool response)
     {
-        AudioManager.instance.PlaySound(response?SoundType.Success:SoundType.Fail);
+        var job = JobManager.instance.activeJob;
+        bool acknowledgingMiss = !response && job != null && job.state == JobState.Failed;
+        AudioManager.instance.PlaySound(response ? SoundType.Success : acknowledgingMiss ? SoundType.Button : SoundType.Fail);
         JobManager.instance.EndJob(response);
         jobView.ClearJobView();
-        SetActiveJobTabButtonNotificationLight(false);
+        UpdateActiveJobsDot();
     }
 
     public void AbandonActiveJob()
@@ -169,25 +178,35 @@ public class UIManager : MonoSingleton<UIManager>
         OnActiveJobResponse(activeJobView, false);
     }
 
-    public void SetActiveJobTabButtonNotificationLight(bool isActive)
+    public void ClaimActiveJob()
     {
-        regularJobClaimable = isActive;
-        UpdateActiveJobsDot();
+        var job = JobManager.instance.activeJob;
+        if (job == null || job.state != JobState.Claimable) return;
+        OnActiveJobResponse(activeJobView, true);
     }
 
+    // Active tab dot: a job (regular or express) was delivered or missed its deadline and waits for a tap.
     private void UpdateActiveJobsDot()
     {
-        tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(regularJobClaimable);
+        var regular = JobManager.instance.activeJob;
+        bool regularDone = regular != null && (regular.state == JobState.Claimable || regular.state == JobState.Failed);
+        var express = ExpressJobManager.instance.Job;
+        bool expressDone = express != null &&
+                           (express.status == ExpressStatus.Completed || express.status == ExpressStatus.Failed);
+        tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(regularDone || expressDone);
     }
 
-    // The express slot sits on top of the Job List: dot there for an offer to answer or a result to collect.
-    private void UpdateExpressDot()
+    // An accepted express job is a job: it leaves the Job List for the Active tab until it's claimed or dismissed.
+    private void RefreshExpress()
     {
         var express = ExpressJobManager.instance;
-        var job = express.Job;
-        bool attention = express.HasOffer ||
-                         (job != null && (job.status == ExpressStatus.Completed || job.status == ExpressStatus.Failed));
-        tabButtons[(int)TabType.JobList].SetNotificationDotStatus(attention);
+        bool hasJob = express.HasJob;
+        if (expressBoardView) expressBoardView.gameObject.SetActive(!hasJob);
+        if (expressActiveView) expressActiveView.gameObject.SetActive(hasJob);
+        activeJobView.SetExpressRunning(hasJob);
+
+        tabButtons[(int)TabType.JobList].SetNotificationDotStatus(express.HasOffer);
+        UpdateActiveJobsDot();
     }
 
     public void UpdateCompletedJobCount(int i)

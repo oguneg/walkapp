@@ -52,7 +52,7 @@ public class PopupExpressOffer : PopupBase
         ExpressOffer offer = manager.Offer;
         if (offer == null)
         {
-            // Expired while queued/open, or accepted from the Active Jobs tab.
+            // Expired while queued/open, or accepted from the Job List.
             HidePopup();
             return;
         }
@@ -72,6 +72,6 @@ public class PopupExpressOffer : PopupBase
         }
 
         HidePopup();
-        UIManager.instance.ForceTab(TabType.JobList);
+        UIManager.instance.ForceTab(TabType.ActiveJobs);
     }
 }

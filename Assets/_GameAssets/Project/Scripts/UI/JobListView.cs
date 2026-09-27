@@ -34,23 +34,43 @@ public class JobListView : MonoBehaviour
 
         var job = jobOfferView.assignedJob;
 
-        // One regular job at a time: ask before replacing the running one (its progress would be lost).
+        // One regular job at a time.
         var current = JobManager.instance.activeJob;
         if (current != null)
         {
-            string progress = current.stepsLeft <= 0
-                ? "It's delivered and waiting to be claimed."
-                : $"It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.";
-            UIManager.instance.ShowConfirm("JOB IN PROGRESS",
-                $"You're already hauling <b>{current.jobData.cargoType}</b>. {progress}\n\nReplace it with <b>{job.cargoType}</b>? The current job and its progress will be lost.",
-                "REPLACE", "KEEP CURRENT",
-                () =>
-                {
-                    if (jobOfferView.assignedJob != job) return;
-                    UIManager.instance.AbandonActiveJob();
-                    OnJobResponse(jobOfferView, true);
-                });
-            return;
+            if (current.state == JobState.Failed)
+            {
+                // Missed its deadline: nothing left to lose, just clear it.
+                UIManager.instance.AbandonActiveJob();
+            }
+            else if (current.state == JobState.Claimable)
+            {
+                long pay = DailyBonusManager.instance.ApplyBonus(current.jobData.reward);
+                UIManager.instance.ShowConfirm("CLAIM FIRST",
+                    $"Your <b>{current.jobData.cargoType}</b> delivery is waiting to be claimed.\n\nClaim <sprite=0>{pay:N0} and take <b>{job.cargoType}</b>?",
+                    "CLAIM & TAKE", "NOT NOW",
+                    () =>
+                    {
+                        if (jobOfferView.assignedJob != job) return;
+                        UIManager.instance.ClaimActiveJob();
+                        OnJobResponse(jobOfferView, true);
+                    });
+                return;
+            }
+            else
+            {
+                // Running: ask before replacing it (its progress would be lost).
+                UIManager.instance.ShowConfirm("JOB IN PROGRESS",
+                    $"You're already hauling <b>{current.jobData.cargoType}</b>. It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.\n\nReplace it with <b>{job.cargoType}</b>? The current job and its progress will be lost.",
+                    "REPLACE", "KEEP CURRENT",
+                    () =>
+                    {
+                        if (jobOfferView.assignedJob != job) return;
+                        UIManager.instance.AbandonActiveJob();
+                        OnJobResponse(jobOfferView, true);
+                    });
+                return;
+            }
         }
 
         if (CurrencyManager.instance.CanAfford(CurrencyType.Fuel, job.fuelCost))

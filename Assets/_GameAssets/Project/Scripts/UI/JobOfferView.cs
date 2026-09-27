@@ -36,6 +36,7 @@ namespace OgunWorks.UI
             incomePerStepText.text = $"{job.reward / (float)Mathf.Max(1, job.steps):0.00} per step";
             if (incomePerFuelText) incomePerFuelText.text = $"<sprite=0>{job.reward * 1f / Mathf.Max(1, job.fuelCost / CurrencyManager.FuelUnit):F2} per <sprite=4>";
             if (distanceText) distanceText.text = $"{job.distance}km";
+            if (timeText) timeText.text = $"<sprite=5>{FormatLimit(job.timeInMinutes)}";
 
             if (accentImage)
             {
@@ -46,6 +47,15 @@ namespace OgunWorks.UI
 
             RefreshAffordability();
             gameObject.SetActive(true);
+        }
+
+        /// <summary>Time limit at a glance: "45m", "1h 30m", "8h", "5d 12h".</summary>
+        public static string FormatLimit(int minutes)
+        {
+            if (minutes < 60) return $"{minutes}m";
+            if (minutes < 48 * 60) return minutes % 60 == 0 ? $"{minutes / 60}h" : $"{minutes / 60}h {minutes % 60}m";
+            int hours = minutes / 60;
+            return hours % 24 == 0 ? $"{hours / 24}d" : $"{hours / 24}d {hours % 24}h";
         }
 
         /// <summary>Fuel cost turns red when the tank can't cover it (accepting then offers a refuel).</summary>

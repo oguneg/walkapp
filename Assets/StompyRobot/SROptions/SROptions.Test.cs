@@ -74,6 +74,18 @@ public partial class SROptions
         StepManager.instance.DebugSimulateAway(10000, 180);
     }
 
+    [Category("Jobs")]
+    public void ExpireJobDeadlineNow()
+    {
+        JobManager.instance.DebugExpireDeadline();
+    }
+
+    [Category("Jobs")]
+    public void Skip1Hour()
+    {
+        GameClock.DebugAdvance(TimeSpan.FromHours(1));
+    }
+
     [Category("Daily")]
     public void PastSixDays7000Steps()
     {

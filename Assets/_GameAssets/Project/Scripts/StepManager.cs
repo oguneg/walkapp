@@ -19,6 +19,9 @@ using UnityEngine.Android;
 ///
 /// Android's step counter is cumulative since boot, so the offline amount is a counter delta.
 /// iOS's counter restarts at 0 every time it is enabled, so the offline amount comes from StepHistory (CMPedometer).
+///
+/// If the running job's deadline fell inside the away time, the job only gets the steps walked before it
+/// (split with StepHistory, or by time share without it), the job is settled, and the rest goes to the bank.
 /// </summary>
 public class StepManager : MonoSingleton<StepManager>
 {
@@ -35,7 +38,7 @@ public class StepManager : MonoSingleton<StepManager>
 
     /// <summary>
     /// False while a launch/resume sync hasn't credited the away steps yet.
-    /// Deadline checks (express jobs) wait for this so steps walked before a deadline aren't missed.
+    /// Deadline checks (regular and express jobs) wait for this so steps walked before a deadline aren't missed.
     /// </summary>
     public bool StepsSettled => !isSyncing && (IsReady || Time.realtimeSinceStartup > SettleGiveUpSeconds);
 
@@ -243,32 +246,93 @@ public class StepManager : MonoSingleton<StepManager>
 
         // Not persisted here on purpose: the baseline is saved on pause together with the bank, job and
         // currencies it paid for. After a crash both roll back and the same steps are simply credited again.
+        // Still "syncing" while crediting: a deadline split may wait on the step history.
+        yield return CreditOffline(offline, from, now, showPopup: true);
         isSyncing = false;
-
-        CreditOffline(offline, from, now, showPopup: true);
     }
 
-    private void CreditOffline(long steps, DateTime fromUtc, DateTime toUtc, bool showPopup)
+    private IEnumerator CreditOffline(long steps, DateTime fromUtc, DateTime toUtc, bool showPopup)
     {
-        offlineSteps = steps;
-        if (steps <= 0)
+        offlineSteps = Math.Max(0, steps);
+        var jobs = JobManager.instance;
+        ActiveJobSaveData job = jobs.activeJob;
+        bool jobWasRunning = job != null && job.IsRunning;
+        var allocation = new StepAllocation();
+
+        if (steps > 0)
         {
-            UpdateGUI();
-            return;
+            totalSteps += steps;
+
+            // The job only gets what was walked by its deadline.
+            long beforeDeadline = steps;
+            DateTime walkedBy = toUtc;
+            if (jobWasRunning && job.DeadlineUtc < toUtc)
+            {
+                walkedBy = job.DeadlineUtc > fromUtc ? job.DeadlineUtc : fromUtc;
+                beforeDeadline = 0;
+                if (walkedBy > fromUtc)
+                {
+                    double share = (walkedBy - fromUtc).TotalSeconds / (toUtc - fromUtc).TotalSeconds;
+                    beforeDeadline = (long)Math.Round(steps * share);
+
+                    if (StepHistory.IsSupported)
+                    {
+                        long? history = null;
+                        bool done = false;
+                        StepHistory.QuerySteps(fromUtc, walkedBy, result =>
+                        {
+                            history = result;
+                            done = true;
+                        });
+
+                        float waited = 0f;
+                        while (!done && waited < HistoryTimeout)
+                        {
+                            waited += Time.unscaledDeltaTime;
+                            yield return null;
+                        }
+
+                        if (history.HasValue) beforeDeadline = Math.Clamp(history.Value, 0, steps);
+                    }
+                }
+            }
+
+            allocation.Add(jobs.AllocateSteps(beforeDeadline, GameClock.ToUnix(walkedBy)));
+            // Settle a job whose deadline passed while away before the later steps go to the bank.
+            yield return jobs.ResolveDeadline();
+            allocation.Add(jobs.AllocateSteps(steps - beforeDeadline, GameClock.ToUnix(toUtc)));
+
+            ExpressJobManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
+            DailyBonusManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
+        }
+        else
+        {
+            yield return jobs.ResolveDeadline();
         }
 
-        totalSteps += steps;
-        StepAllocation allocation = JobManager.instance.AllocateSteps(steps);
-        ExpressJobManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
-        DailyBonusManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
         UpdateGUI();
 
-        if (showPopup && steps >= offlinePopupThreshold)
+        // Also report a job that was delivered or missed while away, even on a lazy day.
+        string jobNote = jobWasRunning ? JobOutcomeNote(job) : null;
+        if (showPopup && (steps >= offlinePopupThreshold || jobNote != null))
         {
             TimeSpan? awayFor = toUtc > fromUtc ? toUtc - fromUtc : (TimeSpan?)null;
-            var report = new OfflineStepReport(allocation, awayFor);
+            var report = new OfflineStepReport(allocation, awayFor, jobNote);
             PopupManager.instance.EnqueuePopup(PopupType.PopupOfflineSteps,
                 popup => ((PopupOfflineSteps)popup).Initialize(report));
+        }
+    }
+
+    private static string JobOutcomeNote(ActiveJobSaveData job)
+    {
+        switch (job.state)
+        {
+            case JobState.Claimable:
+                return $"<b>{job.jobData.cargoType}</b> delivered! Your pay is waiting on the Active tab.";
+            case JobState.Failed:
+                return $"<b>{job.jobData.cargoType}</b> missed its deadline, {job.stepsLeft:N0} steps short.";
+            default:
+                return null;
         }
     }
 
@@ -359,6 +423,13 @@ public class StepManager : MonoSingleton<StepManager>
         // On device the OS knows nothing about these steps, so hand them over directly.
         lastSyncUtc = to;
         hasSyncPoint = true;
-        CreditOffline(steps, from, to, showPopup: true);
+        StartCoroutine(DebugCreditAway(steps, from, to));
+    }
+
+    private IEnumerator DebugCreditAway(long steps, DateTime from, DateTime to)
+    {
+        isSyncing = true;
+        yield return CreditOffline(steps, from, to, showPopup: true);
+        isSyncing = false;
     }
 }

@@ -6,12 +6,16 @@ using UnityEngine;
 namespace OgunWorks.UI
 {
     /// <summary>
-    /// The express slot at the top of the Active Jobs tab. One panel, several states:
-    /// idle (when the next offer comes), offer (accept/decline), active (countdown, progress, pace),
-    /// resolving, completed (claim) and failed (acknowledge).
+    /// Express deliveries, in two places:
+    ///   Board  (top of the Job List): idle (when the next offer comes, dispatcher call) and offer (accept/decline).
+    ///   Active (Active tab): the accepted job - countdown, progress, pace, then claim or acknowledge a miss.
+    /// UIManager shows the board slot while there's no express job and the Active card while there is one.
     /// </summary>
     public class ExpressJobView : MonoBehaviour
     {
+        public enum Slot { Board, Active }
+
+        [SerializeField] private Slot slot = Slot.Board;
         [SerializeField] private TextMeshProUGUI titleText, detailText, timerText, timerLabelText;
         [SerializeField] private TextMeshProUGUI progressText, hintText, rewardText;
         [SerializeField] private UnityEngine.UI.Image panelImage, progressFill;
@@ -32,10 +36,7 @@ namespace OgunWorks.UI
         [Tooltip("Offers have no progress bar, so the card can be shorter.")]
         [SerializeField] private float offerHeight = 350f;
 
-        private const float GiveUpConfirmSeconds = 3f;
-
         private ExpressJobManager manager;
-        private float giveUpArmedUntil;
         private ExpressStatus? lastStatus;
 
         private void Awake()
@@ -61,9 +62,14 @@ namespace OgunWorks.UI
 
         private void Refresh()
         {
-            ExpressJob job = manager.Job;
-            if (job != null) ShowJob(job);
-            else if (manager.HasOffer) ShowOffer(manager.Offer);
+            if (slot == Slot.Active)
+            {
+                ExpressJob job = manager.Job;
+                if (job != null) ShowJob(job);
+                return;
+            }
+
+            if (manager.HasOffer) ShowOffer(manager.Offer);
             else ShowIdle();
         }
 
@@ -83,7 +89,7 @@ namespace OgunWorks.UI
 
             long cost = manager.DispatcherCost;
             SetButtons($"CALL <sprite=0>{NumberFormat.Compact(cost)}", null);
-            primaryButton.interactable = CurrencyManager.instance.CanAfford(CurrencyType.Coin, cost);
+            primaryButton.interactable = manager.CanCallDispatcher && CurrencyManager.instance.CanAfford(CurrencyType.Coin, cost);
         }
 
         private void ShowOffer(ExpressOffer offer)
@@ -116,8 +122,7 @@ namespace OgunWorks.UI
                     timerText.text = GameClock.FormatClock(job.TimeLeft);
                     timerLabelText.text = "left";
                     hintText.text = PaceHint(job);
-                    bool armed = Time.unscaledTime < giveUpArmedUntil;
-                    SetButtons(null, armed ? "SURE?" : "GIVE UP");
+                    SetButtons(null, "GIVE UP");
                     break;
 
                 case ExpressStatus.Resolving:
@@ -199,7 +204,8 @@ namespace OgunWorks.UI
             {
                 if (manager.HasOffer)
                 {
-                    manager.AcceptOffer();
+                    // Accepted express jobs live on the Active tab, like any other job.
+                    if (manager.AcceptOffer()) UIManager.instance.ForceTab(TabType.ActiveJobs);
                 }
                 else if (!manager.CallDispatcher())
                 {
@@ -229,16 +235,11 @@ namespace OgunWorks.UI
             }
             else if (job.status == ExpressStatus.Active)
             {
-                // Two taps to give up, so a stray tap doesn't throw away an hour of walking.
-                if (Time.unscaledTime < giveUpArmedUntil)
-                {
-                    giveUpArmedUntil = 0f;
-                    manager.Abandon();
-                }
-                else
-                {
-                    giveUpArmedUntil = Time.unscaledTime + GiveUpConfirmSeconds;
-                }
+                // Same prompt as abandoning a regular job, so a stray tap doesn't throw away an hour of walking.
+                UIManager.instance.ShowConfirm("GIVE UP EXPRESS?",
+                    $"Drop the <b>{job.offer.cargoType}</b> rush delivery? The steps you walked still count for your other job and the bank.",
+                    "GIVE UP", "KEEP GOING",
+                    () => manager.Abandon());
             }
 
             AudioManager.instance.PlaySound(SoundType.Button);

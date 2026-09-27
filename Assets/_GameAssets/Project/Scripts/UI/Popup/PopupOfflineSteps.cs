@@ -24,12 +24,12 @@ public class PopupOfflineSteps : PopupBase
                 : "";
         }
 
-        if (detailText) detailText.text = BuildDetail(a);
+        if (detailText) detailText.text = BuildDetail(a, report.jobNote);
 
-        offlineStepsText.text = "<mspace=0.56em>0";
-        activeStepsText.text = "<mspace=0.56em>0";
-        bankedStepsText.text = "<mspace=0.56em>0";
-        wastedStepsText.text = "<mspace=0.56em>0";
+        offlineStepsText.text = Mono(0);
+        activeStepsText.text = Mono(0);
+        bankedStepsText.text = Mono(0);
+        wastedStepsText.text = Mono(0);
 
         sequence = DOTween.Sequence().SetTarget(this);
         sequence.AppendInterval(0.3f);
@@ -49,12 +49,20 @@ public class PopupOfflineSteps : PopupBase
 
         sequence.AppendInterval(0.2f);
         sequence.AppendCallback(() => AudioManager.instance.PlayCount((int)(value / 100), duration));
-        sequence.Append(DOVirtual.Int(0, (int)value, duration, v => label.text = $"<mspace=0.56em>{v:N0}"));
+        sequence.Append(DOVirtual.Int(0, (int)value, duration, v => label.text = Mono(v)));
     }
 
-    private static string BuildDetail(StepAllocation a)
+    // Fixed-width digits so the count-up doesn't wobble, but the thousands separator keeps its natural width.
+    private static string Mono(long value)
+    {
+        string separator = System.Globalization.NumberFormatInfo.CurrentInfo.NumberGroupSeparator;
+        return "<mspace=0.56em>" + value.ToString("N0").Replace(separator, "</mspace>" + separator + "<mspace=0.56em>") + "</mspace>";
+    }
+
+    private static string BuildDetail(StepAllocation a, string jobNote)
     {
         var lines = new List<string>();
+        if (!string.IsNullOrEmpty(jobNote)) lines.Add(jobNote);
         if (a.bankBurned > 0)
             lines.Add(a.bankCost > a.bankBurned
                 ? $"Your step bank added <b>{a.bankBurned:N0}</b> steps to the job (cost {a.bankCost:N0})."

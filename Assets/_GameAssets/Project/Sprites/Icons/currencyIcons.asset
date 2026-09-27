@@ -63,6 +63,11 @@ MonoBehaviour:
     m_GlyphIndex: 4
     m_Scale: 1
     m_Name: currencyIcons_4
+  - m_ElementType: 2
+    m_Unicode: 65534
+    m_GlyphIndex: 5
+    m_Scale: 1
+    m_Name: clock
   m_GlyphTable:
   - m_Index: 0
     m_Metrics:
@@ -144,6 +149,22 @@ MonoBehaviour:
     m_AtlasIndex: 0
     m_ClassDefinitionType: 0
     sprite: {fileID: -1136987088, guid: 18def364f9e4e8043b0376fe61bac6a0, type: 3}
+  - m_Index: 5
+    m_Metrics:
+      m_Width: 255
+      m_Height: 255
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 220
+      m_HorizontalAdvance: 300
+    m_GlyphRect:
+      m_X: 258
+      m_Y: 1
+      m_Width: 252
+      m_Height: 254
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
   spriteInfoList: []
   fallbackSpriteAssets: []
 --- !u!21 &8060955792407758721

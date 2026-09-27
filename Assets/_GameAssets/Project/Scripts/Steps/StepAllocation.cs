@@ -28,10 +28,12 @@ public readonly struct OfflineStepReport
 {
     public readonly StepAllocation allocation;
     public readonly TimeSpan? awayFor;
+    public readonly string jobNote; // the regular job was delivered or missed its deadline while away
 
-    public OfflineStepReport(StepAllocation allocation, TimeSpan? awayFor)
+    public OfflineStepReport(StepAllocation allocation, TimeSpan? awayFor, string jobNote = null)
     {
         this.allocation = allocation;
         this.awayFor = awayFor;
+        this.jobNote = jobNote;
     }
 }

@@ -1,39 +1,51 @@
 using System;
 using UnityEngine;
 
-// 1. The Wrapper Class that holds EVERYTHING for one active job
-[System.Serializable]
+/// <summary>
+/// Everything saved for the one regular job in progress.
+/// Active until the steps are done (Claimable, no time limit on claiming) or the deadline passes first (Failed).
+/// </summary>
+[Serializable]
 public class ActiveJobSaveData
 {
     public JobData jobData;
-    public JobState state = JobState.None;
-    public long acceptTimestamp;
-    public long deadlineTimestamp;
+    public JobState state = JobState.Active;
+    public long acceptUnix;
+    public long deadlineUnix;
     public long stepsLeft;
+    // Walked steps credited to this job (bank burn not included). The deadline check compares it with the
+    // OS step history for [accept, deadline] to catch steps that were walked in time but credited late.
+    public long walkedSteps;
 
-    public bool isValid = false; 
+    public bool isValid = false;
 
-    // Constructor to easily create a new active job
     public ActiveJobSaveData(JobData data)
     {
-        this.jobData = data;
-        this.stepsLeft = data.steps;
-        
-        // Save current time as Ticks (a giant integer)
-        this.acceptTimestamp = DateTime.Now.Ticks;
-        
-        // Calculate Deadline
-        this.deadlineTimestamp = DateTime.Now.AddMinutes(data.timeInMinutes).Ticks;
-        
-        this.isValid = true;
+        jobData = data;
+        stepsLeft = data.steps;
+        acceptUnix = GameClock.UnixNow;
+        deadlineUnix = acceptUnix + Math.Max(1, data.timeInMinutes) * 60L;
+        state = JobState.Active;
+        isValid = true;
     }
-    
+
     public ActiveJobSaveData() { }
 
-    public DateTime AcceptTime => new DateTime(acceptTimestamp);
-    public DateTime DeadlineTime => new DateTime(deadlineTimestamp);
+    public DateTime AcceptUtc => GameClock.FromUnix(acceptUnix);
+    public DateTime DeadlineUtc => GameClock.FromUnix(deadlineUnix);
+    public TimeSpan TimeLeft => DeadlineUtc - GameClock.UtcNow;
+    public bool IsRunning => state == JobState.Active;
+    public bool IsPastDeadline => GameClock.UnixNow >= deadlineUnix;
 
-    public double TimeRemainingSeconds => 999; //(DeadlineTime - DateTime.Now).TotalSeconds;
+    /// <summary>Share of the time limit already used, 0..1.</summary>
+    public float TimeUsed01
+    {
+        get
+        {
+            long span = deadlineUnix - acceptUnix;
+            return span <= 0 ? 1f : Mathf.Clamp01((GameClock.UnixNow - acceptUnix) / (float)span);
+        }
+    }
 }
 
 public static class JobSaveManager
@@ -43,20 +55,18 @@ public static class JobSaveManager
     public static void SaveJob(ActiveJobSaveData activeJob)
     {
         string json = JsonUtility.ToJson(activeJob);
-        
+
         PlayerPrefs.SetString(JOB_KEY, json);
         PlayerPrefs.Save();
-        
-        Debug.Log("Job Saved: " + json);
     }
-    
+
     public static ActiveJobSaveData LoadJob()
     {
         if (!PlayerPrefs.HasKey(JOB_KEY)) return null;
 
         string json = PlayerPrefs.GetString(JOB_KEY);
 
-        try 
+        try
         {
             return JsonUtility.FromJson<ActiveJobSaveData>(json);
         }
@@ -72,5 +82,4 @@ public static class JobSaveManager
         PlayerPrefs.DeleteKey(JOB_KEY);
         PlayerPrefs.Save();
     }
-    
 }
