@@ -34,43 +34,14 @@ public class JobListView : MonoBehaviour
 
         var job = jobOfferView.assignedJob;
 
-        // One regular job at a time.
-        var current = JobManager.instance.activeJob;
-        if (current != null)
+        // One job at a time, regular or express: free the slot first (UIManager asks when something would be lost).
+        if (!JobManager.instance.JobSlotFree)
         {
-            if (current.state == JobState.Failed)
+            UIManager.instance.RequestJobSlot(job.cargoType.ToString(), () =>
             {
-                // Missed its deadline: nothing left to lose, just clear it.
-                UIManager.instance.AbandonActiveJob();
-            }
-            else if (current.state == JobState.Claimable)
-            {
-                long pay = DailyBonusManager.instance.ApplyBonus(current.jobData.reward);
-                UIManager.instance.ShowConfirm("CLAIM FIRST",
-                    $"Your <b>{current.jobData.cargoType}</b> delivery is waiting to be claimed.\n\nClaim <sprite=0>{pay:N0} and take <b>{job.cargoType}</b>?",
-                    "CLAIM & TAKE", "NOT NOW",
-                    () =>
-                    {
-                        if (jobOfferView.assignedJob != job) return;
-                        UIManager.instance.ClaimActiveJob();
-                        OnJobResponse(jobOfferView, true);
-                    });
-                return;
-            }
-            else
-            {
-                // Running: ask before replacing it (its progress would be lost).
-                UIManager.instance.ShowConfirm("JOB IN PROGRESS",
-                    $"You're already hauling <b>{current.jobData.cargoType}</b>. It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.\n\nReplace it with <b>{job.cargoType}</b>? The current job and its progress will be lost.",
-                    "REPLACE", "KEEP CURRENT",
-                    () =>
-                    {
-                        if (jobOfferView.assignedJob != job) return;
-                        UIManager.instance.AbandonActiveJob();
-                        OnJobResponse(jobOfferView, true);
-                    });
-                return;
-            }
+                if (jobOfferView.assignedJob == job && JobManager.instance.JobSlotFree) OnJobResponse(jobOfferView, true);
+            });
+            return;
         }
 
         if (CurrencyManager.instance.CanAfford(CurrencyType.Fuel, job.fuelCost))

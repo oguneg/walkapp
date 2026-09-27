@@ -178,6 +178,102 @@ public class UIManager : MonoSingleton<UIManager>
         OnActiveJobResponse(activeJobView, false);
     }
 
+    /// <summary>
+    /// One job at a time, regular or express. Frees the slot, then runs <paramref name="take"/>:
+    /// a missed job is just cleared, a delivered one is claimed and a running one dropped, both after asking.
+    /// </summary>
+    public void RequestJobSlot(string newJob, System.Action take)
+    {
+        var express = ExpressJobManager.instance;
+        var ex = express.Job;
+        if (ex != null)
+        {
+            switch (ex.status)
+            {
+                case ExpressStatus.Failed:
+                    express.Dismiss();
+                    take();
+                    return;
+                case ExpressStatus.Completed:
+                    ShowConfirm("CLAIM FIRST",
+                        $"Your <b>{ex.offer.cargoType}</b> express delivery is waiting to be claimed.\n\nClaim <sprite=0>{DailyBonusManager.instance.ApplyBonus(ex.offer.reward):N0} and take <b>{newJob}</b>?",
+                        "CLAIM & TAKE", "NOT NOW",
+                        () =>
+                        {
+                            if (express.Job != ex) return;
+                            AudioManager.instance.PlaySound(SoundType.Success);
+                            express.Claim();
+                            take();
+                        });
+                    return;
+                default:
+                    ShowConfirm("EXPRESS IN PROGRESS",
+                        $"You're on a rush delivery: <b>{ex.offer.cargoType}</b>, {ex.bestProgress:N0} / {ex.offer.targetSteps:N0} steps.\n\nDrop it and take <b>{newJob}</b>? The express job and its pay will be lost.",
+                        "REPLACE", "KEEP EXPRESS",
+                        () =>
+                        {
+                            if (express.Job != ex) return;
+                            express.Abandon();
+                            take();
+                        });
+                    return;
+            }
+        }
+
+        var current = JobManager.instance.activeJob;
+        if (current == null)
+        {
+            take();
+            return;
+        }
+
+        switch (current.state)
+        {
+            case JobState.Failed:
+                // Missed its deadline: nothing left to lose, just clear it.
+                AbandonActiveJob();
+                take();
+                return;
+            case JobState.Claimable:
+                ShowConfirm("CLAIM FIRST",
+                    $"Your <b>{current.jobData.cargoType}</b> delivery is waiting to be claimed.\n\nClaim <sprite=0>{DailyBonusManager.instance.ApplyBonus(current.jobData.reward):N0} and take <b>{newJob}</b>?",
+                    "CLAIM & TAKE", "NOT NOW",
+                    () =>
+                    {
+                        if (JobManager.instance.activeJob != current) return;
+                        ClaimActiveJob();
+                        take();
+                    });
+                return;
+            default:
+                ShowConfirm("JOB IN PROGRESS",
+                    $"You're already hauling <b>{current.jobData.cargoType}</b>. It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.\n\nReplace it with <b>{newJob}</b>? The current job and its progress will be lost.",
+                    "REPLACE", "KEEP CURRENT",
+                    () =>
+                    {
+                        if (JobManager.instance.activeJob != current) return;
+                        AbandonActiveJob();
+                        take();
+                    });
+                return;
+        }
+    }
+
+    /// <summary>Accept the express offer (from the Job List slot or the popup), freeing the job slot first.</summary>
+    public void AcceptExpressOffer()
+    {
+        var express = ExpressJobManager.instance;
+        var offer = express.Offer;
+        if (offer == null) return;
+
+        RequestJobSlot($"{offer.cargoType} (express)", () =>
+        {
+            if (express.Offer != offer) return;
+            if (express.AcceptOffer()) ForceTab(TabType.ActiveJobs);
+            else AudioManager.instance.PlaySound(SoundType.Fail);
+        });
+    }
+
     public void ClaimActiveJob()
     {
         var job = JobManager.instance.activeJob;

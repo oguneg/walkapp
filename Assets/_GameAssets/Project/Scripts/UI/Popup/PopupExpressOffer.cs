@@ -58,20 +58,16 @@ public class PopupExpressOffer : PopupBase
         }
 
         goalText.text = $"Walk <b>{offer.targetSteps:N0}</b> steps\nin <b>{offer.durationMinutes} minutes</b>";
-        detailText.text = $"Rush delivery: {offer.cargoType}. The clock starts when you accept.";
+        detailText.text = JobManager.instance.JobSlotFree
+            ? $"Rush delivery: {offer.cargoType}. The clock starts when you accept."
+            : $"Rush delivery: {offer.cargoType}. Taking it replaces your current job.";
         rewardText.text = $"<sprite=0>{offer.reward:N0}    <sprite=3>{offer.experience:N0}";
         timerText.text = $"Offer ends in {GameClock.FormatClock(GameClock.FromUnix(offer.expiresUnix) - GameClock.UtcNow)}";
     }
 
     private void OnAccept()
     {
-        if (!manager.AcceptOffer())
-        {
-            Refresh();
-            return;
-        }
-
         HidePopup();
-        UIManager.instance.ForceTab(TabType.ActiveJobs);
+        UIManager.instance.AcceptExpressOffer();
     }
 }

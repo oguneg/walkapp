@@ -6,9 +6,10 @@ using Random = UnityEngine.Random;
 /// <summary>
 /// Express deliveries: occasional time-limited offers ("walk 4,000 steps in the next hour") that pay several times
 /// a regular job. The hardcore jobs: a short accept window and a deadline measured in minutes, where regular jobs
-/// get hours to days. They run alongside the regular job (the same walked steps count for both) and banked steps
-/// can't be used: only steps walked inside the window count. Offers sit on top of the Job List; an accepted job
-/// shows on the Active tab until it's claimed or its miss is acknowledged.
+/// get hours to days. An express job is a job: it takes the one job slot, so it can't be accepted next to a regular
+/// job (UIManager.RequestJobSlot offers to replace it). Banked steps can't be used: only steps walked inside the
+/// window count, and they're banked as usual. Offers sit on top of the Job List; an accepted job shows on the
+/// Active tab until it's claimed or its miss is acknowledged.
 ///
 /// While the app is open, progress comes from live steps. Time spent closed is counted from the OS step history
 /// (StepHistory), which knows exactly how many of those steps fell before the deadline. Without history
@@ -158,7 +159,7 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
 
     public bool AcceptOffer()
     {
-        if (!data.hasOffer || data.hasJob) return false;
+        if (!data.hasOffer || data.hasJob || JobManager.instance.activeJob != null) return false;
 
         long now = GameClock.UnixNow;
         if (now >= data.offer.expiresUnix) return false;
@@ -370,7 +371,7 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
 
     public void Abandon()
     {
-        if (!IsRunning) return;
+        if (!data.hasJob || (data.job.status != ExpressStatus.Active && data.job.status != ExpressStatus.Resolving)) return;
         data.failedCount++;
         EndJob();
     }

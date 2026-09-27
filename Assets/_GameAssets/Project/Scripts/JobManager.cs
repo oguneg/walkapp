@@ -163,13 +163,18 @@ public class JobManager : MonoSingleton<JobManager>
         return Mathf.Max(15, Mathf.RoundToInt(minutes / unit) * (int)unit);
     }
 
-    public void AcceptJob(JobData job)
+    /// <summary>One job at a time: no regular job and no express job (running or waiting to be claimed).</summary>
+    public bool JobSlotFree => activeJob == null && !ExpressJobManager.instance.HasJob;
+
+    public bool AcceptJob(JobData job)
     {
+        if (!JobSlotFree) return false;
         activeJob = new ActiveJobSaveData(job);
         Debug.Log(activeJob);
         JobSaveManager.SaveJob(activeJob);
         DisplayActiveJob();
         uiManager.ForceTab(TabType.ActiveJobs);
+        return true;
     }
 
     private void DisplayActiveJob()

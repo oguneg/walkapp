@@ -42,7 +42,6 @@ namespace OgunWorks.UI
         [Header("Empty state")]
         [Tooltip("Shown instead of this panel when there is no regular job.")]
         [SerializeField] private GameObject emptyState;
-        [SerializeField] private TextMeshProUGUI emptyTitleText, emptyBodyText;
 
         [Header("Look per state")]
         [SerializeField] private Image panelImage;
@@ -60,6 +59,7 @@ namespace OgunWorks.UI
 
         private DailyBonusManager daily;
         private JobState? shownState;
+        private bool expressRunning;
 
         private void Awake()
         {
@@ -298,17 +298,14 @@ namespace OgunWorks.UI
             shownState = null;
             isEmpty = true;
             gameObject.SetActive(false);
-            if (emptyState) emptyState.SetActive(true);
+            if (emptyState) emptyState.SetActive(!expressRunning);
         }
 
-        /// <summary>The empty state reads differently when an express job is on the card above it.</summary>
+        /// <summary>An express job is the job in progress: no "no job" card under it.</summary>
         public void SetExpressRunning(bool running)
         {
-            if (emptyTitleText) emptyTitleText.text = running ? "No regular job" : "No job in progress";
-            if (emptyBodyText)
-                emptyBodyText.text = running
-                    ? "Take one from the Job List too: the same steps count for both."
-                    : "Pick one from the Job List. Until then, your steps go to the step bank.";
+            expressRunning = running;
+            if (emptyState) emptyState.SetActive(isEmpty && !running);
         }
     }
 }

@@ -204,8 +204,7 @@ namespace OgunWorks.UI
             {
                 if (manager.HasOffer)
                 {
-                    // Accepted express jobs live on the Active tab, like any other job.
-                    if (manager.AcceptOffer()) UIManager.instance.ForceTab(TabType.ActiveJobs);
+                    UIManager.instance.AcceptExpressOffer();
                 }
                 else if (!manager.CallDispatcher())
                 {
@@ -237,7 +236,7 @@ namespace OgunWorks.UI
             {
                 // Same prompt as abandoning a regular job, so a stray tap doesn't throw away an hour of walking.
                 UIManager.instance.ShowConfirm("GIVE UP EXPRESS?",
-                    $"Drop the <b>{job.offer.cargoType}</b> rush delivery? The steps you walked still count for your other job and the bank.",
+                    $"Drop the <b>{job.offer.cargoType}</b> rush delivery? The steps you walked stay in your step bank.",
                     "GIVE UP", "KEEP GOING",
                     () => manager.Abandon());
             }
