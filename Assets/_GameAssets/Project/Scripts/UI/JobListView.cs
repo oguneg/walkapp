@@ -70,6 +70,24 @@ public class JobListView : MonoBehaviour
         }
     }
 
+    /// <summary>A newly unlocked kind of job: on top of the list, replacing the bottom offer if it's full.</summary>
+    public void AddFeaturedJob(JobData jobData)
+    {
+        var view = jobOfferViews.FirstOrDefault(o => o.isEmpty);
+        if (view != null)
+        {
+            activeJobCount++;
+        }
+        else
+        {
+            view = jobOfferViews.Where(o => !o.isEmpty).OrderBy(o => o.transform.GetSiblingIndex()).LastOrDefault();
+            if (view == null) return;
+        }
+
+        view.AssignJob(jobData);
+        view.transform.SetSiblingIndex(PinnedChildren);
+    }
+
     // Children that aren't offers (the express slot) stay pinned above them.
     private int PinnedChildren
     {

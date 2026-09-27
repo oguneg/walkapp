@@ -31,10 +31,18 @@ public class UpgradeManager : MonoSingleton<UpgradeManager>
     public void Start()
     {
         for (int i = 0; i < upgrades.Length && i < upgradeItemViews.Length; i++)
-        {
-            upgradeItemViews[i].gameObject.SetActive(true);
             upgradeItemViews[i].AssignUpgrade(upgrades[i]);
-        }
+
+        ProgressionManager.instance.OnUnlocksChanged += RefreshUnlocked;
+        RefreshUnlocked();
+    }
+
+    // Upgrades appear with the player's level (UpgradeData.unlockLevel).
+    private void RefreshUnlocked()
+    {
+        var progression = ProgressionManager.instance;
+        for (int i = 0; i < upgradeItemViews.Length; i++)
+            upgradeItemViews[i].gameObject.SetActive(i < upgrades.Length && progression.IsUnlocked(upgrades[i]));
     }
 
     public static bool IsAdditive(UpgradeType type) =>

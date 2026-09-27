@@ -11,41 +11,69 @@ public class ExperienceManager : MonoSingleton<ExperienceManager>
     private long exp, requiredExpForLevelUp;
 
     [SerializeField] private TextMeshProUGUI levelText, expText;
-    
-    private void Start()
+
+    /// <summary>The level the HUD shows: a new player is level 1.</summary>
+    public int Level => level + 1;
+
+    /// <summary>(old level, new level), both as shown in the HUD.</summary>
+    public event Action<int, int> OnLevelChanged;
+
+    // Loaded in Awake so unlock checks (ProgressionManager) see the real level from the first frame.
+    public override void Init()
     {
         LoadPlayerStats();
         CalculateRequiredExp();
+    }
+
+    private void Start()
+    {
         UpdateGUI();
     }
 
     public void AddExperience(long amount)
     {
+        int before = Level;
         exp += amount;
         CheckForLevelUp();
         UpdateGUI();
+        if (Level != before)
+        {
+            SavePlayerStats();
+            OnLevelChanged?.Invoke(before, Level);
+        }
     }
 
     private void CheckForLevelUp()
     {
-        if (exp > requiredExpForLevelUp)
+        while (exp >= requiredExpForLevelUp)
         {
             exp -= requiredExpForLevelUp;
             level++;
             CalculateRequiredExp();
-            CheckForLevelUp();
         }
     }
 
     private void CalculateRequiredExp()
     {
-        requiredExpForLevelUp = 1000 * (long)Math.Pow(1.2f, level);
+        requiredExpForLevelUp = (long)(1000 * Math.Pow(1.2, level));
     }
 
     private void UpdateGUI()
     {
-        levelText.text = $"<sprite=2>{level + 1}";
-        expText.text = $"<sprite=3>{NumberFormat.Compact(exp)}/{NumberFormat.Compact(requiredExpForLevelUp)}";
+        if (levelText) levelText.text = $"<sprite=2>{Level}";
+        if (expText) expText.text = $"<sprite=3>{NumberFormat.Compact(exp)}/{NumberFormat.Compact(requiredExpForLevelUp)}";
+    }
+
+    /// <summary>SRDebugger: jump to a level (as shown in the HUD) with no XP towards the next.</summary>
+    public void DebugSetLevel(int displayLevel)
+    {
+        int before = Level;
+        level = Mathf.Max(0, displayLevel - 1);
+        exp = 0;
+        CalculateRequiredExp();
+        UpdateGUI();
+        SavePlayerStats();
+        if (Level != before) OnLevelChanged?.Invoke(before, Level);
     }
 
     void OnApplicationPause(bool paused)

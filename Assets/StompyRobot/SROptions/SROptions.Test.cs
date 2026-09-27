@@ -74,6 +74,24 @@ public partial class SROptions
         StepManager.instance.DebugSimulateAway(10000, 180);
     }
 
+    [Category("Progression")]
+    public void ResetToLevel1()
+    {
+        ExperienceManager.instance.DebugSetLevel(1);
+    }
+
+    [Category("Progression")]
+    public void LevelUp()
+    {
+        ExperienceManager.instance.DebugSetLevel(ExperienceManager.instance.Level + 1);
+    }
+
+    [Category("Progression")]
+    public void Add1000Xp()
+    {
+        ExperienceManager.instance.AddExperience(1000);
+    }
+
     [Category("Jobs")]
     public void ExpireJobDeadlineNow()
     {

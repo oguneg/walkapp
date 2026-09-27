@@ -24,3 +24,4 @@ MonoBehaviour:
   maxLevel: 4
   displayOffset: 3
   displayFormat: max {0:0.0}x
+  unlockLevel: 6

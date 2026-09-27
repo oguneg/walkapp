@@ -22,3 +22,6 @@ MonoBehaviour:
   upgradeSaveKey: expresscontractsupgrade
   description: Express deliveries pay more
   maxLevel: 0
+  displayOffset: 0
+  displayFormat: 
+  unlockLevel: 5

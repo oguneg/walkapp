@@ -24,3 +24,4 @@ MonoBehaviour:
   maxLevel: 5
   displayOffset: 10
   displayFormat: '{0:0.#}% loss at 3x'
+  unlockLevel: 6

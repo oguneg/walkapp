@@ -62,6 +62,8 @@ public class JobManager : MonoSingleton<JobManager>
     {
         get
         {
+            // Until the burn rate control unlocks, the bank burns at the loss-free default.
+            if (!ProgressionManager.instance.IsUnlocked(Feature.BurnRate)) return lossFreeBurnRate;
             if (burnRate < 0) burnRate = PlayerPrefs.GetFloat(BurnRateKey, lossFreeBurnRate);
             return SnapBurnRate(burnRate);
         }
@@ -122,6 +124,21 @@ public class JobManager : MonoSingleton<JobManager>
 
         StartCoroutine(DeadlineRoutine());
 
+        // A job type that unlocks shows up on top of the list right away instead of waiting for a free slot.
+        var progression = ProgressionManager.instance;
+        var unlockedTypes = new HashSet<JobType>();
+        foreach (var t in tiers)
+            if (progression.IsUnlocked(t.type)) unlockedTypes.Add(t.type);
+        progression.OnUnlocksChanged += () =>
+        {
+            foreach (var t in tiers)
+            {
+                bool open = progression.IsUnlocked(t.type);
+                if (open && unlockedTypes.Add(t.type)) CreateJob(t, featured: true);
+                else if (!open) unlockedTypes.Remove(t.type);
+            }
+        };
+
         while (true)
         {
             CreateJob();
@@ -131,7 +148,15 @@ public class JobManager : MonoSingleton<JobManager>
 
     private void CreateJob()
     {
-        JobTier tier = tiers[Random.Range(0, tiers.Length)];
+        // Medium and long jobs appear with the player's level (ProgressionManager).
+        var progression = ProgressionManager.instance;
+        JobTier[] open = Array.FindAll(tiers, t => progression.IsUnlocked(t.type));
+        if (open.Length == 0) open = tiers;
+        CreateJob(open[Random.Range(0, open.Length)], featured: false);
+    }
+
+    private void CreateJob(JobTier tier, bool featured)
+    {
         var job = new JobData();
         job.cargoType = (CargoType)Random.Range(0, 8);
         job.jobType = tier.type;
@@ -146,7 +171,7 @@ public class JobManager : MonoSingleton<JobManager>
         var fleet = FleetManager.instance;
         job.reward = (long)(job.reward * upgradeManager.Get(UpgradeType.IncomeMultiplier) * fleet.RewardMultiplier);
         job.fuelCost = (long)(job.fuelCost / upgradeManager.Get(UpgradeType.FuelEfficiency) * fleet.FuelMultiplier);
-        uiManager.AddJob(job);
+        uiManager.AddJob(job, featured);
     }
 
     /// <summary>Time limit for a job: its type's range, scaled by where its distance sits in that type's range.</summary>

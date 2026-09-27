@@ -63,6 +63,13 @@ namespace OgunWorks.UI
 
         private void Awake()
         {
+            // Burn rate row appears when that feature unlocks.
+            ProgressionManager.instance.OnUnlocksChanged += () =>
+            {
+                shownState = null;
+                UpdateStatus();
+            };
+
             // The slider moves between stops: OFF, 2x, then +0.5x up to the upgraded max.
             if (burnSlider)
             {
@@ -122,12 +129,13 @@ namespace OgunWorks.UI
         private void ApplyState(JobState state, long left)
         {
             bool running = state == JobState.Active;
-            if (burnRow) burnRow.SetActive(running);
+            bool showBurn = running && ProgressionManager.instance.IsUnlocked(Feature.BurnRate);
+            if (burnRow) burnRow.SetActive(showBurn);
             if (abandonButton) abandonButton.gameObject.SetActive(running);
             claimButton.interactable = !running;
             stepProgressBar.color = state == JobState.Failed ? failedStepBarColor : stepBarColor;
             SetPanel(state == JobState.Claimable ? deliveredColor : state == JobState.Failed ? failedColor : runningColor,
-                running ? runningHeight : settledHeight);
+                showBurn ? runningHeight : settledHeight);
 
             switch (state)
             {

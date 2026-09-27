@@ -85,8 +85,21 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
 
     public override void Init() => Load();
 
+    private bool Unlocked => ProgressionManager.instance.IsUnlocked(Feature.Express);
+
     private IEnumerator Start()
     {
+        ProgressionManager.instance.OnUnlocksChanged += () =>
+        {
+            // Just unlocked: the first offer comes quickly so the feature gets noticed.
+            if (Unlocked && !data.hasOffer && !data.hasJob && !data.introduced)
+            {
+                data.introduced = true;
+                data.nextOfferUnix = GameClock.UnixNow + tuning.firstOfferDelayMinutes * 60L;
+                SaveAndNotify();
+            }
+        };
+
         var wait = new WaitForSeconds(1f);
         while (true)
         {
@@ -106,7 +119,7 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
             SaveAndNotify();
         }
 
-        if (!data.hasOffer && !data.hasJob && now >= data.nextOfferUnix)
+        if (!data.hasOffer && !data.hasJob && now >= data.nextOfferUnix && Unlocked)
             CreateOffer();
 
         if (IsRunning)

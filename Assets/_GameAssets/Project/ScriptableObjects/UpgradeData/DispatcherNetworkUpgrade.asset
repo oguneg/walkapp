@@ -22,3 +22,6 @@ MonoBehaviour:
   upgradeSaveKey: dispatchernetworkupgrade
   description: Express offers come more often
   maxLevel: 15
+  displayOffset: 0
+  displayFormat: 
+  unlockLevel: 5

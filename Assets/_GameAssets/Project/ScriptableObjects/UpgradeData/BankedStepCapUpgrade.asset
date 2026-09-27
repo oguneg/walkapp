@@ -22,3 +22,6 @@ MonoBehaviour:
   upgradeSaveKey: bankedStepCap01
   description: Bank more steps while idle
   maxLevel: 0
+  displayOffset: 0
+  displayFormat: 
+  unlockLevel: 2

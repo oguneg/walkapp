@@ -22,3 +22,6 @@ MonoBehaviour:
   upgradeSaveKey: fuelUpgrade01
   description: New jobs burn less fuel
   maxLevel: 0
+  displayOffset: 0
+  displayFormat: 
+  unlockLevel: 2

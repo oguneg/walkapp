@@ -22,3 +22,6 @@ MonoBehaviour:
   upgradeSaveKey: fueltankupgrade
   description: Carry more fuel between refills
   maxLevel: 0
+  displayOffset: 0
+  displayFormat: 
+  unlockLevel: 4

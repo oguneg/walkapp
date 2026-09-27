@@ -27,6 +27,10 @@ public class UIManager : MonoSingleton<UIManager>
     private TabButtonView activeTabButton;
     private TabView activeTab;
 
+    // Tabs revealed by a level-up keep a dot until they're first opened.
+    private readonly System.Collections.Generic.HashSet<TabType> newTabs = new System.Collections.Generic.HashSet<TabType>();
+    private bool fleetAttention, jobListAttention, activeAttention;
+
     private void Start()
     {
         foreach (TabButtonView tabButton in tabButtons)
@@ -42,7 +46,10 @@ public class UIManager : MonoSingleton<UIManager>
             tab.gameObject.SetActive(false);
         }
 
-        OnTabButtonClicked(tabButtons[2]);
+        var progression = ProgressionManager.instance;
+        RefreshTabUnlocks(announce: false);
+        progression.OnUnlocksChanged += () => RefreshTabUnlocks(announce: true);
+        OnTabButtonClicked(tabButtons[(int)(progression.IsUnlocked(Feature.DailyStars) ? TabType.Stats : TabType.JobList)]);
 
         var express = ExpressJobManager.instance;
         express.OnOfferCreated += _ => ShowExpressOfferPopup();
@@ -51,7 +58,10 @@ public class UIManager : MonoSingleton<UIManager>
         RefreshExpress();
 
         DailyBonusManager.instance.OnStarsEarnedToday += (gained, _) =>
+        {
+            if (!ProgressionManager.instance.IsUnlocked(Feature.DailyStars)) return;
             PopupManager.instance.EnqueuePopup(PopupType.PopupStarEarned, p => ((PopupStarEarned)p).Initialize(gained));
+        };
 
         if (statsDebugButton)
             statsDebugButton.onClick.AddListener(() => statsDebugPanel.SetActive(!statsDebugPanel.activeSelf));
@@ -75,7 +85,55 @@ public class UIManager : MonoSingleton<UIManager>
     // Fleet dot: the next truck is affordable.
     private void UpdateFleetDot()
     {
-        tabButtons[(int)TabType.Fleet].SetNotificationDotStatus(FleetManager.instance.CanAffordNextTruck);
+        fleetAttention = FleetManager.instance.CanAffordNextTruck;
+        UpdateDot(TabType.Fleet);
+    }
+
+    private void UpdateDot(TabType type)
+    {
+        bool attention = newTabs.Contains(type) ||
+                         (type == TabType.Fleet && fleetAttention) ||
+                         (type == TabType.JobList && jobListAttention) ||
+                         (type == TabType.ActiveJobs && activeAttention);
+        tabButtons[(int)type].SetNotificationDotStatus(attention);
+    }
+
+    // Tabs appear with the player's level. A tab revealed by a level-up pops in and gets a dot until opened.
+    private void RefreshTabUnlocks(bool announce)
+    {
+        var progression = ProgressionManager.instance;
+        SetTabUnlocked(TabType.Upgrades, progression.IsUnlocked(Feature.UpgradesTab), announce);
+        SetTabUnlocked(TabType.Stats, progression.IsUnlocked(Feature.DailyStars), announce);
+        SetTabUnlocked(TabType.Fleet, progression.IsUnlocked(Feature.FleetTab), announce);
+        RefreshExpress();
+    }
+
+    private void SetTabUnlocked(TabType type, bool unlocked, bool announce)
+    {
+        var button = tabButtons[(int)type];
+        bool wasVisible = button.gameObject.activeSelf;
+        button.gameObject.SetActive(unlocked);
+        if (!unlocked)
+        {
+            newTabs.Remove(type);
+            return;
+        }
+
+        if (announce && !wasVisible)
+        {
+            newTabs.Add(type);
+            button.transform.DOKill(true);
+            button.transform.localScale = Vector3.zero;
+            button.transform.DOScale(1f, 0.45f).SetEase(Ease.OutBack).SetDelay(0.2f);
+        }
+
+        UpdateDot(type);
+    }
+
+    /// <summary>One-button message (level ups).</summary>
+    public void ShowMessage(string title, string message, string buttonLabel)
+    {
+        ShowConfirm(title, message, buttonLabel, null, null);
     }
 
     /// <summary>Yes/no prompt. onConfirm runs only on the confirm button.</summary>
@@ -95,6 +153,7 @@ public class UIManager : MonoSingleton<UIManager>
     private void OnTabButtonClicked(TabButtonView tabButton)
     {
         if (activeTabButton && activeTabButton.tabType == tabButton.tabType) return;
+        if (newTabs.Remove(tabButton.tabType)) UpdateDot(tabButton.tabType);
         activeTabButton?.Deactivate();
         activeTabButton = tabButton;
         activeTabButton.Activate();
@@ -136,9 +195,11 @@ public class UIManager : MonoSingleton<UIManager>
     // For buttons wired in the inspector (UnityEvents can't pass enums).
     public void OpenJobList() => ForceTab(TabType.JobList);
 
-    public void AddJob(JobData jobData)
+    /// <summary>featured: put it on top, replacing the bottom offer when the list is full.</summary>
+    public void AddJob(JobData jobData, bool featured = false)
     {
-        jobListView.AddJob(jobData);
+        if (featured) jobListView.AddFeaturedJob(jobData);
+        else jobListView.AddJob(jobData);
     }
 
     public void DisplayActiveJob(ActiveJobSaveData job)
@@ -289,7 +350,8 @@ public class UIManager : MonoSingleton<UIManager>
         var express = ExpressJobManager.instance.Job;
         bool expressDone = express != null &&
                            (express.status == ExpressStatus.Completed || express.status == ExpressStatus.Failed);
-        tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(regularDone || expressDone);
+        activeAttention = regularDone || expressDone;
+        UpdateDot(TabType.ActiveJobs);
     }
 
     // An accepted express job is a job: it leaves the Job List for the Active tab until it's claimed or dismissed.
@@ -297,11 +359,13 @@ public class UIManager : MonoSingleton<UIManager>
     {
         var express = ExpressJobManager.instance;
         bool hasJob = express.HasJob;
-        if (expressBoardView) expressBoardView.gameObject.SetActive(!hasJob);
+        bool unlocked = ProgressionManager.instance.IsUnlocked(Feature.Express);
+        if (expressBoardView) expressBoardView.gameObject.SetActive(!hasJob && unlocked);
         if (expressActiveView) expressActiveView.gameObject.SetActive(hasJob);
         activeJobView.SetExpressRunning(hasJob);
 
-        tabButtons[(int)TabType.JobList].SetNotificationDotStatus(express.HasOffer);
+        jobListAttention = express.HasOffer;
+        UpdateDot(TabType.JobList);
         UpdateActiveJobsDot();
     }
 

@@ -60,4 +60,5 @@ public class ExpressSaveData
     public int failedCount;
     public int dispatchDay;   // local date as yyyymmdd
     public int dispatchCalls; // paid dispatcher calls on that day
+    public bool introduced;   // the quick first offer after unlocking was scheduled
 }

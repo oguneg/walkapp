@@ -22,3 +22,6 @@ MonoBehaviour:
   upgradeSaveKey: incomeUpgrade01
   description: More coins from every job
   maxLevel: 0
+  displayOffset: 0
+  displayFormat: 
+  unlockLevel: 2

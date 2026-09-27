@@ -22,3 +22,6 @@ MonoBehaviour:
   upgradeSaveKey: fuelpumpupgrade
   description: Fuel refills faster over time
   maxLevel: 30
+  displayOffset: 0
+  displayFormat: 
+  unlockLevel: 4

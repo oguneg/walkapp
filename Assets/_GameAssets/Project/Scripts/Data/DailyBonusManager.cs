@@ -138,7 +138,8 @@ public class DailyBonusManager : MonoSingleton<DailyBonusManager>
     public float MaxBonusPercent => starCap * bonusPerStar;
 
     /// <summary>Coins after the momentum bonus.</summary>
-    public long ApplyBonus(long coins) => (long)Math.Round(coins * (1.0 + BonusPercent));
+    public long ApplyBonus(long coins) =>
+        ProgressionManager.instance.IsUnlocked(Feature.DailyStars) ? (long)Math.Round(coins * (1.0 + BonusPercent)) : coins;
 
     // ---------------------------------------------------------------- step intake (from StepManager)
 
