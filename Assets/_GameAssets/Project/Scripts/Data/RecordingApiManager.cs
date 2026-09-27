@@ -19,28 +19,52 @@ public class RecordingApiManager : MonoSingleton<RecordingApiManager>
         Days
     }
 
+    // -1 = not checked yet, 0 = unavailable, 1 = available
+    private int availability = -1;
+
+    /// <summary>True when Play Services is recent enough for the local Recording API (checked once, synchronously).</summary>
+    public bool IsAvailable
+    {
+        get
+        {
+            if (availability < 0) availability = CheckAvailability() ? 1 : 0;
+            return availability == 1;
+        }
+    }
+
+    private bool CheckAvailability()
+    {
+        if (Application.platform != RuntimePlatform.Android) return false;
+
+        try
+        {
+            using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            using (AndroidJavaObject context = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+            using (AndroidJavaClass apiAvailClass = new AndroidJavaClass("com.google.android.gms.common.GoogleApiAvailability"))
+            using (AndroidJavaObject apiAvail = apiAvailClass.CallStatic<AndroidJavaObject>("getInstance"))
+            using (AndroidJavaClass localClientClass = new AndroidJavaClass("com.google.android.gms.fitness.LocalRecordingClient"))
+            {
+                int minVersion = localClientClass.GetStatic<int>("LOCAL_RECORDING_CLIENT_MIN_VERSION_CODE");
+                int resultCode = apiAvail.Call<int>("isGooglePlayServicesAvailable", context, minVersion);
+                if (resultCode != 0)
+                    Debug.LogError($"{TAG}: Google Play Services needs an update to use the Recording API (code {resultCode}).");
+                return resultCode == 0;
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"{TAG}: availability check failed. {e.Message}");
+            return false;
+        }
+    }
+
     public void InitializeRecordingAPI()
     {
-        if (Application.platform != RuntimePlatform.Android) return;
+        if (!IsAvailable) return;
 
         using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
         {
             AndroidJavaObject context = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-
-            AndroidJavaClass apiAvailClass =
-                new AndroidJavaClass("com.google.android.gms.common.GoogleApiAvailability");
-            AndroidJavaObject apiAvail = apiAvailClass.CallStatic<AndroidJavaObject>("getInstance");
-
-            AndroidJavaClass localClientClass =
-                new AndroidJavaClass("com.google.android.gms.fitness.LocalRecordingClient");
-            int minVersion = localClientClass.GetStatic<int>("LOCAL_RECORDING_CLIENT_MIN_VERSION_CODE");
-
-            int resultCode = apiAvail.Call<int>("isGooglePlayServicesAvailable", context, minVersion);
-            if (resultCode != 0)
-            {
-                Debug.LogError($"{TAG}: Google Play Services needs an update to use the Recording API.");
-                return;
-            }
 
             AndroidJavaClass fitnessLocal = new AndroidJavaClass("com.google.android.gms.fitness.FitnessLocal");
             AndroidJavaObject localRecordingClient =
@@ -148,7 +172,7 @@ public class RecordingApiManager : MonoSingleton<RecordingApiManager>
                     }
                 }
 
-                onDataRetrieved?.Invoke(extractedLogs);
+                StepHistory.RunOnMainThread(() => onDataRetrieved?.Invoke(extractedLogs));
             }));
 
             task.Call<AndroidJavaObject>("addOnFailureListener",
@@ -297,83 +321,103 @@ public class RecordingApiManager : MonoSingleton<RecordingApiManager>
         return DateTimeOffset.FromUnixTimeSeconds(unix).LocalDateTime.ToString("MM-dd HH:mm");
     }
     
-    // Call this to get a single total step count for a specific timeframe
+    // Call this to get a single total step count for a specific timeframe (0 on failure)
     public void GetTotalStepsInRange(long startTimeUnixSeconds, long endTimeUnixSeconds, Action<int> onTotalRetrieved)
     {
-        if (Application.platform != RuntimePlatform.Android) 
+        QueryTotalSteps(startTimeUnixSeconds, endTimeUnixSeconds,
+            total => onTotalRetrieved?.Invoke((int)(total ?? 0)));
+    }
+
+    /// <summary>
+    /// Total steps in [start, end). Calls back on the Unity main thread with null when the query
+    /// can't be answered (not Android, Play Services too old, API failure) so callers can tell "unknown" from 0.
+    /// </summary>
+    public void QueryTotalSteps(long startTimeUnixSeconds, long endTimeUnixSeconds, Action<long?> onResult)
+    {
+        void Deliver(long? total) => StepHistory.RunOnMainThread(() => onResult?.Invoke(total));
+
+        if (!IsAvailable)
         {
-            Debug.LogWarning($"{TAG}: Not on Android. Returning 0 steps.");
-            onTotalRetrieved?.Invoke(0);
+            Deliver(null);
             return;
         }
 
-        using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+        if (endTimeUnixSeconds <= startTimeUnixSeconds)
         {
-            AndroidJavaObject context = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+            Deliver(0);
+            return;
+        }
 
-            AndroidJavaClass fitnessLocal = new AndroidJavaClass("com.google.android.gms.fitness.FitnessLocal");
-            AndroidJavaObject localRecordingClient = fitnessLocal.CallStatic<AndroidJavaObject>("getLocalRecordingClient", context);
+        try
+        {
+            using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            {
+                AndroidJavaObject context = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
 
-            AndroidJavaClass localDataTypeClass = new AndroidJavaClass("com.google.android.gms.fitness.data.LocalDataType");
-            AndroidJavaObject typeStepCountDelta = localDataTypeClass.GetStatic<AndroidJavaObject>("TYPE_STEP_COUNT_DELTA");
+                AndroidJavaClass fitnessLocal = new AndroidJavaClass("com.google.android.gms.fitness.FitnessLocal");
+                AndroidJavaObject localRecordingClient = fitnessLocal.CallStatic<AndroidJavaObject>("getLocalRecordingClient", context);
 
-            AndroidJavaClass timeUnitClass = new AndroidJavaClass("java.util.concurrent.TimeUnit");
-            AndroidJavaObject secondsUnit = timeUnitClass.GetStatic<AndroidJavaObject>("SECONDS");
-            
-            // We bucket by 1 minute to ensure the API respects your exact start/end boundaries
-            // without snapping to an hour or day boundary and accidentally including extra steps.
-            AndroidJavaObject minutesUnit = timeUnitClass.GetStatic<AndroidJavaObject>("MINUTES");
+                AndroidJavaClass localDataTypeClass = new AndroidJavaClass("com.google.android.gms.fitness.data.LocalDataType");
+                AndroidJavaObject typeStepCountDelta = localDataTypeClass.GetStatic<AndroidJavaObject>("TYPE_STEP_COUNT_DELTA");
 
-            AndroidJavaObject builder = new AndroidJavaObject("com.google.android.gms.fitness.request.LocalDataReadRequest$Builder");
-            builder.Call<AndroidJavaObject>("aggregate", typeStepCountDelta);
-            //builder.Call<AndroidJavaObject>("bucketByTime", 15, minutesUnit);
-            long durationSeconds = endTimeUnixSeconds - startTimeUnixSeconds;
-            builder.Call<AndroidJavaObject>("bucketByTime", (int)durationSeconds, secondsUnit);
-            builder.Call<AndroidJavaObject>("setTimeRange", startTimeUnixSeconds, endTimeUnixSeconds, secondsUnit);
-            
-            AndroidJavaObject readRequest = builder.Call<AndroidJavaObject>("build");
-            AndroidJavaObject task = localRecordingClient.Call<AndroidJavaObject>("readData", readRequest);
+                AndroidJavaClass timeUnitClass = new AndroidJavaClass("java.util.concurrent.TimeUnit");
+                AndroidJavaObject secondsUnit = timeUnitClass.GetStatic<AndroidJavaObject>("SECONDS");
 
-            task.Call<AndroidJavaObject>("addOnSuccessListener", new TaskSuccessListener(response => {
-                int grandTotalSteps = 0;
-                
-                AndroidJavaObject buckets = response.Call<AndroidJavaObject>("getBuckets");
-                int bucketCount = buckets.Call<int>("size");
+                // One bucket spanning exactly [start, end) so the API doesn't snap to hour/day boundaries.
+                AndroidJavaObject builder = new AndroidJavaObject("com.google.android.gms.fitness.request.LocalDataReadRequest$Builder");
+                builder.Call<AndroidJavaObject>("aggregate", typeStepCountDelta);
+                long durationSeconds = endTimeUnixSeconds - startTimeUnixSeconds;
+                builder.Call<AndroidJavaObject>("bucketByTime", (int)durationSeconds, secondsUnit);
+                builder.Call<AndroidJavaObject>("setTimeRange", startTimeUnixSeconds, endTimeUnixSeconds, secondsUnit);
 
-                for (int i = 0; i < bucketCount; i++)
+                AndroidJavaObject readRequest = builder.Call<AndroidJavaObject>("build");
+                AndroidJavaObject task = localRecordingClient.Call<AndroidJavaObject>("readData", readRequest);
+
+                task.Call<AndroidJavaObject>("addOnSuccessListener", new TaskSuccessListener(response =>
                 {
-                    AndroidJavaObject bucket = buckets.Call<AndroidJavaObject>("get", i);
-                    AndroidJavaObject dataSets = bucket.Call<AndroidJavaObject>("getDataSets");
-                    int dsCount = dataSets.Call<int>("size");
-                    
-                    for (int j = 0; j < dsCount; j++)
+                    long grandTotalSteps = 0;
+
+                    using (AndroidJavaClass fieldClass = new AndroidJavaClass("com.google.android.gms.fitness.data.LocalField"))
+                    using (AndroidJavaObject fieldSteps = fieldClass.GetStatic<AndroidJavaObject>("FIELD_STEPS"))
+                    using (AndroidJavaObject buckets = response.Call<AndroidJavaObject>("getBuckets"))
                     {
-                        AndroidJavaObject dataSet = dataSets.Call<AndroidJavaObject>("get", j);
-                        AndroidJavaObject dataPoints = dataSet.Call<AndroidJavaObject>("getDataPoints");
-                        int dpCount = dataPoints.Call<int>("size");
-                        
-                        for (int k = 0; k < dpCount; k++)
+                        int bucketCount = buckets.Call<int>("size");
+                        for (int i = 0; i < bucketCount; i++)
                         {
-                            AndroidJavaObject dp = dataPoints.Call<AndroidJavaObject>("get", k);
-                            
-                            AndroidJavaClass fieldClass = new AndroidJavaClass("com.google.android.gms.fitness.data.LocalField");
-                            AndroidJavaObject fieldSteps = fieldClass.GetStatic<AndroidJavaObject>("FIELD_STEPS");
-                            
-                            AndroidJavaObject val = dp.Call<AndroidJavaObject>("getValue", fieldSteps);
-                            grandTotalSteps += val.Call<int>("asInt");
+                            using AndroidJavaObject bucket = buckets.Call<AndroidJavaObject>("get", i);
+                            using AndroidJavaObject dataSets = bucket.Call<AndroidJavaObject>("getDataSets");
+                            int dsCount = dataSets.Call<int>("size");
+
+                            for (int j = 0; j < dsCount; j++)
+                            {
+                                using AndroidJavaObject dataSet = dataSets.Call<AndroidJavaObject>("get", j);
+                                using AndroidJavaObject dataPoints = dataSet.Call<AndroidJavaObject>("getDataPoints");
+                                int dpCount = dataPoints.Call<int>("size");
+
+                                for (int k = 0; k < dpCount; k++)
+                                {
+                                    using AndroidJavaObject dp = dataPoints.Call<AndroidJavaObject>("get", k);
+                                    using AndroidJavaObject val = dp.Call<AndroidJavaObject>("getValue", fieldSteps);
+                                    grandTotalSteps += val.Call<int>("asInt");
+                                }
+                            }
                         }
                     }
-                }
 
-                // Pass the final single integer back to your game logic
-                onTotalRetrieved?.Invoke(grandTotalSteps);
-            }));
+                    Deliver(grandTotalSteps);
+                }));
 
-            task.Call<AndroidJavaObject>("addOnFailureListener", new TaskFailureListener(exception => {
-                Debug.LogError($"{TAG}: Failed to read step total. " + exception.Call<string>("getMessage"));
-                // Return 0 so your game logic doesn't hang waiting for an answer
-                onTotalRetrieved?.Invoke(0);
-            }));
+                task.Call<AndroidJavaObject>("addOnFailureListener", new TaskFailureListener(exception =>
+                {
+                    Debug.LogError($"{TAG}: Failed to read step total. " + exception.Call<string>("getMessage"));
+                    Deliver(null);
+                }));
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"{TAG}: step query threw. {e.Message}");
+            Deliver(null);
         }
     }
 

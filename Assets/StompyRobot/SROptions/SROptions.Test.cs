@@ -38,12 +38,62 @@ public partial class SROptions
         JobManager.instance.RegisterSteps(1000);
     }
     
-    [Category("Test")]
-    public void Add10000StepsOffline()
+    [Category("Steps")]
+    public void Walk100Steps()
     {
-        StepManager.instance.TestOfflineSteps(10000);
+        StepManager.instance.DebugWalk(100);
     }
-    
+
+    [Category("Steps")]
+    public void Walk1000Steps()
+    {
+        StepManager.instance.DebugWalk(1000);
+    }
+
+    [Category("Steps")]
+    public void Away30MinWalked1500()
+    {
+        StepManager.instance.DebugSimulateAway(1500, 30);
+    }
+
+    [Category("Steps")]
+    public void Away3HoursWalked10000()
+    {
+        StepManager.instance.DebugSimulateAway(10000, 180);
+    }
+
+    [Category("Express")]
+    public void SpawnExpressOffer()
+    {
+        ExpressJobManager.instance.DebugSpawnOffer();
+    }
+
+    [Category("Express")]
+    public void Skip10Minutes()
+    {
+        GameClock.DebugAdvance(TimeSpan.FromMinutes(10));
+    }
+
+    [Category("Express")]
+    public void EndExpressWindowNow()
+    {
+        ExpressJobManager.instance.DebugEndWindowNow();
+    }
+
+    [Category("Express")]
+    public void ResetExpressAndClock()
+    {
+        GameClock.DebugReset();
+        ExpressJobManager.instance.DebugReset();
+    }
+
+    [Category("Express")]
+    public bool EditorSimulateStepHistory
+    {
+        get { return StepHistory.EditorSimulateHistory; }
+        set { StepHistory.EditorSimulateHistory = value; }
+    }
+
     
 #if ENABLE_TEST_SROPTIONS
 

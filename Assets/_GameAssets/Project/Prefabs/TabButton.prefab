@@ -178,6 +178,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: -3.36
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -361,3 +362,8 @@ MonoBehaviour:
   tabType: 0
   textField: {fileID: 8459983330610284216}
   notificationDot: {fileID: 2072298187992979737}
+  background: {fileID: 1840751497406108924}
+  activeColor: {r: 0.16862746, g: 0.42352942, b: 0.76862746, a: 1}
+  inactiveColor: {r: 0.07450981, g: 0.2509804, b: 0.45490196, a: 1}
+  activeTextColor: {r: 1, g: 1, b: 1, a: 1}
+  inactiveTextColor: {r: 0.6862745, g: 0.7647059, b: 0.8627451, a: 1}

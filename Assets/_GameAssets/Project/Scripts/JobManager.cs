@@ -100,87 +100,49 @@ public class JobManager : MonoSingleton<JobManager>
         JobSaveManager.ClearJob();
     }
 
-    public void RegisterOfflineSteps(int amount)
+    public void RegisterSteps(int amount) => AllocateSteps(amount);
+
+    /// <summary>
+    /// Single place walked steps are spent, for both live and offline steps:
+    /// the active job first (each walked step also burns one banked step while the bank lasts),
+    /// then the step bank up to its cap. Whatever doesn't fit is reported as overflow.
+    /// </summary>
+    public StepAllocation AllocateSteps(long steps)
     {
+        var result = new StepAllocation { total = Math.Max(0, steps) };
+        long remaining = result.total;
+        if (remaining == 0) return result;
+
         if (activeJob != null && activeJob.stepsLeft > 0)
         {
-            var leftoverSteps = amount;
-            var stepsLeft = activeJob.stepsLeft;
-            var bankedSteps = currencyManager.GetCurrencyAmount(CurrencyType.BankedStep);
-            int usedSteps = 0;
-            int burnedSteps = 0;
-/////////////////////////////////////////
-            Debug.Log($"steps left {activeJob.stepsLeft}");
-            while (activeJob.stepsLeft > 0)
-            {
-                activeJob.stepsLeft--;
-                amount--;
-                usedSteps++;
-                //Debug.Log("using step");
-                if (bankedSteps > 0)
-                {
-                    activeJob.stepsLeft--;
-                    burnedSteps++;
-                    bankedSteps--;
-                }
-                if (amount <= 0)
-                {
-                    break;
-                }
-            }
-            ReportActiveSteps(usedSteps);
-            currencyManager.AddCurrency(CurrencyType.BankedStep, -burnedSteps);
-///////////////////////////////////////
-            uiManager.UpdateActiveJobStatus();
-            if (activeJob.stepsLeft <= 0)
-            {
-                ReportBankedSteps((int)leftoverSteps-usedSteps);
-                RegisterBankedSteps(leftoverSteps-usedSteps);
-            }
-        }
-        else
-        {
-            ReportBankedSteps(amount);
-            RegisterBankedSteps(amount);
-        }
-    }
+            long need = activeJob.stepsLeft;
+            long bank = currencyManager.GetCurrencyAmount(CurrencyType.BankedStep);
 
-    public void RegisterSteps(int amount)
-    {
-        if (activeJob != null && activeJob.stepsLeft > 0)
-        {
-            activeJob.stepsLeft -= amount;
-            var bankedSteps = currencyManager.GetCurrencyAmount(CurrencyType.BankedStep);
-            var maxBurnAmount = Math.Min(bankedSteps, activeJob.stepsLeft);
-            if (maxBurnAmount < 0) maxBurnAmount = 0;
-            var bankedStepsToBurn = Math.Clamp(amount, 0, maxBurnAmount);
+            // Walked steps needed to finish: half the job while the bank can match every step, otherwise need - bank.
+            long walkedToFinish = 2 * bank >= need ? (need + 1) / 2 : need - bank;
+            long walked = Math.Min(remaining, walkedToFinish);
+            long burned = Math.Min(Math.Min(walked, bank), need - walked);
 
-            activeJob.stepsLeft -= bankedStepsToBurn;
-            currencyManager.AddCurrency(CurrencyType.BankedStep, -bankedStepsToBurn);
+            activeJob.stepsLeft -= walked + burned;
+            remaining -= walked;
+            result.toJob = walked;
+            result.bankBurned = burned;
+
+            if (burned > 0) currencyManager.AddCurrency(CurrencyType.BankedStep, -burned);
             uiManager.UpdateActiveJobStatus();
         }
-        else
+
+        if (remaining > 0)
         {
-            RegisterBankedSteps(amount);
+            long space = currencyManager.GetCurrencyCap(CurrencyType.BankedStep) -
+                         currencyManager.GetCurrencyAmount(CurrencyType.BankedStep);
+            long deposit = Math.Clamp(remaining, 0, Math.Max(0, space));
+            if (deposit > 0) currencyManager.AddCurrency(CurrencyType.BankedStep, deposit);
+            result.toBank = deposit;
+            result.overflow = remaining - deposit;
         }
-    }
 
-    private void ReportBankedSteps(int amount)
-    {
-        var bankableAmount = currencyManager.GetCurrencyCap(CurrencyType.BankedStep) -
-                             currencyManager.GetCurrencyAmount(CurrencyType.BankedStep);
-        StepManager.instance.bankedOfflineSteps = Mathf.Clamp(amount, 0,(int)bankableAmount);
-    }
-
-    private void ReportActiveSteps(int amount)
-    {
-        Debug.Log($"active steps reporting in {amount}");
-        StepManager.instance.usedOfflineSteps = amount;
-    }
-
-    private void RegisterBankedSteps(long amount)
-    {
-        currencyManager.AddCurrency(CurrencyType.BankedStep, amount);
+        return result;
     }
 
     private void OnApplicationPause(bool pauseStatus)

@@ -17,6 +17,12 @@ public class AudioManager : MonoSingleton<AudioManager>
         StartCoroutine(PlayCountRoutine(intensity, duration));
     }
 
+    public void StopCount()
+    {
+        StopAllCoroutines();
+        audioSource.pitch = 1f;
+    }
+
     private IEnumerator PlayCountRoutine(int intensity, float duration)
     {
         audioSource.pitch = 1f;

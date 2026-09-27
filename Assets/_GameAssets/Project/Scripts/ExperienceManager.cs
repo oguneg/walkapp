@@ -45,7 +45,7 @@ public class ExperienceManager : MonoSingleton<ExperienceManager>
     private void UpdateGUI()
     {
         levelText.text = $"<sprite=2>{level + 1}";
-        expText.text = $"<sprite=3>{exp}/{requiredExpForLevelUp}";
+        expText.text = $"<sprite=3>{NumberFormat.Compact(exp)}/{NumberFormat.Compact(requiredExpForLevelUp)}";
     }
 
     void OnApplicationPause(bool paused)

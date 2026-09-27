@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
@@ -5,38 +6,66 @@ using UnityEngine;
 public class PopupOfflineSteps : PopupBase
 {
     [SerializeField] private TextMeshProUGUI offlineStepsText, activeStepsText, bankedStepsText, wastedStepsText;
-    public override void ShowPopup()
+    [SerializeField] private TextMeshProUGUI headerText, detailText;
+    private Sequence sequence;
+
+    public void Initialize(OfflineStepReport report)
     {
-        base.ShowPopup();
+        StepAllocation a = report.allocation;
+
+        // A popup can be re-opened before its previous count-up finished; never let two sequences fight over the labels.
+        sequence?.Kill();
+        AudioManager.instance.StopCount();
+
+        if (headerText)
+        {
+            headerText.text = report.awayFor.HasValue
+                ? $"While you were away <size=70%><color=#6B7A90>{GameClock.FormatDuration(report.awayFor.Value)}</color></size>"
+                : "While you were away...";
+        }
+
+        if (detailText) detailText.text = BuildDetail(a);
+
+        offlineStepsText.text = "<mspace=48>0";
+        activeStepsText.text = "<mspace=44>0";
+        bankedStepsText.text = "<mspace=44>0";
+        wastedStepsText.text = "<mspace=44>0";
+
+        sequence = DOTween.Sequence().SetTarget(this);
+        sequence.AppendInterval(0.3f);
+        AppendCount(offlineStepsText, a.total, 48, 2f);
+        AppendCount(activeStepsText, a.toJob, 44, 1f);
+        AppendCount(bankedStepsText, a.toBank, 44, 1f);
+        AppendCount(wastedStepsText, a.overflow, 44, 1f);
     }
 
-    public void Initialize(int offlineSteps, int activeSteps, int bankedSteps, int wastedSteps)
+    private void AppendCount(TextMeshProUGUI label, long value, int mspace, float duration)
     {
-        var seq =  DOTween.Sequence();
+        if (value <= 0)
+        {
+            sequence.AppendInterval(0.1f);
+            return;
+        }
 
-        offlineStepsText.text = $"<mspace=48>0";
-        activeStepsText.text = $"<mspace=44>0";
-        bankedStepsText.text = $"<mspace=44>0";
-        wastedStepsText.text = $"<mspace=44>0";
-        
-        
-        seq.AppendInterval(0.3f);
-        seq.AppendCallback(() => AudioManager.instance.PlayCount(offlineSteps / 100, 2));
-        seq.Append(DOVirtual.Int(0, offlineSteps, 2f, value => { offlineStepsText.text = $"<mspace=48>{value:N0}"; }));
-        seq.AppendInterval(0.2f);
-        seq.AppendCallback(() => AudioManager.instance.PlayCount(activeSteps / 100,1));
-        seq.Append(DOVirtual.Int(0, activeSteps, 1f, value => { activeStepsText.text = $"<mspace=44>{value:N0}"; }));
-        seq.AppendInterval(0.2f);
-        seq.AppendCallback(() => AudioManager.instance.PlayCount(bankedSteps / 100,1));
-        seq.Append(DOVirtual.Int(0, bankedSteps, 1f, value => { bankedStepsText.text = $"<mspace=44>{value:N0}"; }));
-        seq.AppendInterval(0.2f);
-        seq.AppendCallback(() => AudioManager.instance.PlayCount(wastedSteps / 100,1));
-        seq.Append(DOVirtual.Int(0, wastedSteps, 1f, value => { wastedStepsText.text = $"<mspace=44>{value:N0}"; }));
+        sequence.AppendInterval(0.2f);
+        sequence.AppendCallback(() => AudioManager.instance.PlayCount((int)(value / 100), duration));
+        sequence.Append(DOVirtual.Int(0, (int)value, duration, v => label.text = $"<mspace={mspace}>{v:N0}"));
+    }
+
+    private static string BuildDetail(StepAllocation a)
+    {
+        var lines = new List<string>();
+        if (a.bankBurned > 0)
+            lines.Add($"Your truck also burned <b>{a.bankBurned:N0}</b> banked steps for double speed.");
+        if (a.overflow > 0)
+            lines.Add("Your step depot was full. Upgrade it to keep more steps.");
+        return string.Join("\n", lines);
     }
 
     public override void HidePopup()
     {
+        sequence?.Complete();
+        AudioManager.instance.StopCount();
         base.HidePopup();
     }
 }
-

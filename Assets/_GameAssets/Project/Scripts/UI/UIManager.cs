@@ -19,21 +19,37 @@ public class UIManager : MonoSingleton<UIManager>
     private int activeTabIndex;
     private TabButtonView activeTabButton;
     private TabView activeTab;
+    private bool regularJobClaimable;
+
     private void Start()
     {
         foreach (TabButtonView tabButton in tabButtons)
         {
             tabButton.OnButtonClicked += OnTabButtonClicked;
+            tabButton.Deactivate();
         }
-        
+
         foreach (var tab in tabs)
         {
             tab.transform.localPosition = tabPos.localPosition;
             tab.Deactivate();
             tab.gameObject.SetActive(false);
         }
-        
+
         OnTabButtonClicked(tabButtons[2]);
+
+        var express = ExpressJobManager.instance;
+        express.OnOfferCreated += _ => ShowExpressOfferPopup();
+        express.OnChanged += UpdateActiveJobsDot;
+        if (express.HasOffer && !express.OfferSeen) ShowExpressOfferPopup();
+        UpdateActiveJobsDot();
+    }
+
+    private void ShowExpressOfferPopup()
+    {
+        if (PopupManager.instance.IsShowing(PopupType.PopupExpressOffer)) return;
+        ExpressJobManager.instance.MarkOfferSeen();
+        PopupManager.instance.EnqueuePopup(PopupType.PopupExpressOffer);
     }
 
     private void OnTabButtonClicked(TabButtonView tabButton)
@@ -101,7 +117,19 @@ public class UIManager : MonoSingleton<UIManager>
 
     public void SetActiveJobTabButtonNotificationLight(bool isActive)
     {
-        tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(isActive);
+        regularJobClaimable = isActive;
+        UpdateActiveJobsDot();
+    }
+
+    // The Active Jobs dot means "something to do there": a regular job to claim, an express offer to answer,
+    // or an express result to collect.
+    private void UpdateActiveJobsDot()
+    {
+        var express = ExpressJobManager.instance;
+        var job = express.Job;
+        bool expressNeedsAttention = express.HasOffer ||
+                                     (job != null && (job.status == ExpressStatus.Completed || job.status == ExpressStatus.Failed));
+        tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(regularJobClaimable || expressNeedsAttention);
     }
 
     public void UpdateCompletedJobCount(int i)
