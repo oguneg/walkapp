@@ -74,8 +74,20 @@ public class JobListView : MonoBehaviour
         if (firstAvailableView != null)
         {
             firstAvailableView.AssignJob(jobData);
-            firstAvailableView.transform.SetSiblingIndex(activeJobCount);
+            firstAvailableView.transform.SetSiblingIndex(PinnedChildren + activeJobCount);
             activeJobCount++;
+        }
+    }
+
+    // Children that aren't offers (the express slot) stay pinned above them.
+    private int PinnedChildren
+    {
+        get
+        {
+            int n = 0;
+            foreach (Transform child in transform)
+                if (!child.GetComponent<JobOfferView>()) n++;
+            return n;
         }
     }
 

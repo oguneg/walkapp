@@ -72,6 +72,6 @@ public class PopupExpressOffer : PopupBase
         }
 
         HidePopup();
-        UIManager.instance.ForceTab(TabType.Express);
+        UIManager.instance.ForceTab(TabType.JobList);
     }
 }

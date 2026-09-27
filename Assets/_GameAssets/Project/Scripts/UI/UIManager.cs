@@ -102,7 +102,7 @@ public class UIManager : MonoSingleton<UIManager>
     {
         activeTab?.Deactivate();
         this.DOKill();
-        // Slide direction follows the buttons' order on screen, not the enum (Express was added later but sits second).
+        // Slide direction follows the buttons' order on screen, not the enum.
         int index = tabButtons[(int)tabType].transform.GetSiblingIndex();
         var isComingFromRight = index >= activeTabIndex;
         ShowTab(tabs[(int)tabType], isComingFromRight);
@@ -180,14 +180,14 @@ public class UIManager : MonoSingleton<UIManager>
         tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(regularJobClaimable);
     }
 
-    // Express dot: an offer to answer, or a result to collect.
+    // The express slot sits on top of the Job List: dot there for an offer to answer or a result to collect.
     private void UpdateExpressDot()
     {
         var express = ExpressJobManager.instance;
         var job = express.Job;
         bool attention = express.HasOffer ||
                          (job != null && (job.status == ExpressStatus.Completed || job.status == ExpressStatus.Failed));
-        tabButtons[(int)TabType.Express].SetNotificationDotStatus(attention);
+        tabButtons[(int)TabType.JobList].SetNotificationDotStatus(attention);
     }
 
     public void UpdateCompletedJobCount(int i)
