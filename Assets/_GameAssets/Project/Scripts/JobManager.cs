@@ -63,17 +63,32 @@ public class JobManager : MonoSingleton<JobManager>
         get
         {
             if (burnRate < 0) burnRate = PlayerPrefs.GetFloat(BurnRateKey, lossFreeBurnRate);
-            return Mathf.Clamp(burnRate, 1f, MaxBurnRate);
+            return SnapBurnRate(burnRate);
         }
         set
         {
-            burnRate = Mathf.Clamp(Mathf.Round(value * 10f) / 10f, 1f, MaxBurnRate);
+            burnRate = SnapBurnRate(value);
             PlayerPrefs.SetFloat(BurnRateKey, burnRate);
             uiManager.UpdateActiveJobStatus();
         }
     }
 
     public float MaxBurnRate => baseMaxBurnRate + upgradeManager.Get(UpgradeType.BurnRateMax);
+
+    public const float BurnRateStep = 0.5f;
+
+    /// <summary>Burn rate stops: 1x (off, the bank is untouched), then the loss-free rate, then +0.5 up to the max.</summary>
+    public int BurnRateStopCount => 2 + Mathf.Max(0, Mathf.FloorToInt((MaxBurnRate - lossFreeBurnRate) / BurnRateStep + 1e-3f));
+
+    public float BurnRateAtStop(int stop) =>
+        stop <= 0 ? 1f : Mathf.Min(MaxBurnRate, lossFreeBurnRate + (stop - 1) * BurnRateStep);
+
+    public int BurnRateStop(float rate) =>
+        rate < 1.5f ? 0 : 1 + Mathf.Max(0, Mathf.RoundToInt((rate - lossFreeBurnRate) / BurnRateStep));
+
+    // Older saves may hold in-between values like 2.3x: move them onto the nearest stop.
+    private float SnapBurnRate(float rate) =>
+        BurnRateAtStop(Mathf.Clamp(BurnRateStop(rate), 0, BurnRateStopCount - 1));
 
     /// <summary>Extra share of banked steps spent at this rate, e.g. 0.10 = pulling 2,000 costs 2,200.</summary>
     public float BurnLoss(float rate)

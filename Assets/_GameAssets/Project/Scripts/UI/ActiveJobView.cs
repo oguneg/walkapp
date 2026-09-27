@@ -63,7 +63,13 @@ namespace OgunWorks.UI
 
         private void Awake()
         {
-            if (burnSlider) burnSlider.onValueChanged.AddListener(v => JobManager.instance.BurnRate = v);
+            // The slider moves between stops: OFF, 2x, then +0.5x up to the upgraded max.
+            if (burnSlider)
+            {
+                burnSlider.wholeNumbers = true;
+                burnSlider.onValueChanged.AddListener(v =>
+                    JobManager.instance.BurnRate = JobManager.instance.BurnRateAtStop(Mathf.RoundToInt(v)));
+            }
         }
 
         public void AssignJob(ActiveJobSaveData job)
@@ -208,13 +214,14 @@ namespace OgunWorks.UI
             if (!burnSlider || !burnSlider.gameObject.activeInHierarchy) return;
             var jobs = JobManager.instance;
             float rate = jobs.BurnRate;
-            burnSlider.minValue = 1f;
-            burnSlider.maxValue = jobs.MaxBurnRate;
-            burnSlider.SetValueWithoutNotify(rate);
+            burnSlider.wholeNumbers = true;
+            burnSlider.minValue = 0;
+            burnSlider.maxValue = jobs.BurnRateStopCount - 1;
+            burnSlider.SetValueWithoutNotify(jobs.BurnRateStop(rate));
 
             float loss = jobs.BurnLoss(rate);
-            burnValueText.text = loss > 0
-                ? $"<b>{rate:0.0}x</b> <color=#FF9A8A>-{loss * 100:0}%</color>"
+            burnValueText.text = rate <= 1f ? "<b>OFF</b>"
+                : loss > 0 ? $"<b>{rate:0.0}x</b> <color=#FF9A8A>-{loss * 100:0}%</color>"
                 : $"<b>{rate:0.0}x</b>";
 
             long bank = CurrencyManager.instance.GetCurrencyAmount(CurrencyType.BankedStep);
