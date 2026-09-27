@@ -42,17 +42,26 @@ public class UpgradeItemView : MonoBehaviour
         upgradeDescriptionText.text = string.IsNullOrEmpty(assignedUpgrade.description)
             ? assignedUpgrade.upgradeEffects[0].type.ToString()
             : assignedUpgrade.description;
-        if (levelText) levelText.text = maxed ? $"Lv {level} · MAX" : $"Lv {level}";
-        if (valueText) valueText.text = FormatValue(assignedUpgrade.upgradeEffects[0], manager, maxed);
+        if (levelText) levelText.text = $"Lv {level}"; // the buy button says MAX when maxed
+        if (valueText) valueText.text = FormatValue(assignedUpgrade, manager, maxed);
 
         upgradeCostText.text = maxed ? "MAX" : $"<sprite=0>{cost:N0}";
         buyButton.interactable = !maxed && CurrencyManager.instance.CanAfford(CurrencyType.Coin, cost);
     }
 
     // "x1.27 > x1.30" or "+2,000 > +2,500": what you have now and what the next level gives.
-    private static string FormatValue(UpgradeEffect effect, UpgradeManager manager, bool maxed)
+    private static string FormatValue(UpgradeData upgrade, UpgradeManager manager, bool maxed)
     {
+        UpgradeEffect effect = upgrade.upgradeEffects[0];
         float now = manager.Get(effect.type);
+        if (!string.IsNullOrEmpty(upgrade.displayFormat))
+        {
+            float nextRaw = effect.isMultiplicative ? now * effect.increaseValue : now + effect.increaseValue;
+            string Show(float v) => string.Format(upgrade.displayFormat,
+                effect.isMultiplicative ? upgrade.displayOffset * v : upgrade.displayOffset + v);
+            return maxed ? Show(now) : $"{Show(now)} <color=#FFFFFFAA>></color> <b>{Show(nextRaw)}</b>";
+        }
+
         if (effect.isMultiplicative)
         {
             float next = now * effect.increaseValue;

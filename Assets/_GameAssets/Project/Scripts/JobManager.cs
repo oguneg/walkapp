@@ -16,6 +16,47 @@ public class JobManager : MonoSingleton<JobManager>
     private UpgradeManager upgradeManager;
     private ExperienceManager experienceManager;
 
+    [Header("Burn rate")]
+    [Tooltip("Max burn rate before upgrades. Burn Rate Booster upgrades add to it.")]
+    [SerializeField] private float baseMaxBurnRate = 3f;
+    [Tooltip("Up to this rate, banked steps convert 1:1.")]
+    [SerializeField] private float lossFreeBurnRate = 2f;
+    [Tooltip("Loss at one step above the loss-free rate (0.10 = 10% at 3x). Efficient Burner upgrades scale it down.")]
+    [SerializeField] private float baseLossSlope = 0.10f;
+    [Tooltip("Loss grows with (rate - lossFreeRate) ^ this, so each extra x costs more than the last.")]
+    [SerializeField] private float lossExponent = 1.5f;
+
+    private const string BurnRateKey = "BurnRate";
+    private float burnRate = -1f;
+
+    /// <summary>
+    /// How fast banked steps are spent: at rate R every walked step also pulls R-1 steps of progress from the bank.
+    /// 1x keeps the bank, 2x (default) is loss-free, above that the bank pays extra for the same progress.
+    /// </summary>
+    public float BurnRate
+    {
+        get
+        {
+            if (burnRate < 0) burnRate = PlayerPrefs.GetFloat(BurnRateKey, lossFreeBurnRate);
+            return Mathf.Clamp(burnRate, 1f, MaxBurnRate);
+        }
+        set
+        {
+            burnRate = Mathf.Clamp(Mathf.Round(value * 10f) / 10f, 1f, MaxBurnRate);
+            PlayerPrefs.SetFloat(BurnRateKey, burnRate);
+            uiManager.UpdateActiveJobStatus();
+        }
+    }
+
+    public float MaxBurnRate => baseMaxBurnRate + upgradeManager.Get(UpgradeType.BurnRateMax);
+
+    /// <summary>Extra share of banked steps spent at this rate, e.g. 0.10 = pulling 2,000 costs 2,200.</summary>
+    public float BurnLoss(float rate)
+    {
+        if (rate <= lossFreeBurnRate) return 0f;
+        return baseLossSlope * upgradeManager.Get(UpgradeType.BurnLoss) * Mathf.Pow(rate - lossFreeBurnRate, lossExponent);
+    }
+
     private void Awake()
     {
         uiManager = UIManager.instance;
@@ -31,6 +72,10 @@ public class JobManager : MonoSingleton<JobManager>
         if (activeJob != null)
         {
             DisplayActiveJob();
+        }
+        else
+        {
+            uiManager.ClearActiveJob();
         }
 
         while (true)
@@ -105,8 +150,8 @@ public class JobManager : MonoSingleton<JobManager>
 
     /// <summary>
     /// Single place walked steps are spent, for both live and offline steps:
-    /// the active job first (each walked step also burns one banked step while the bank lasts),
-    /// then the step bank up to its cap. Whatever doesn't fit is reported as overflow.
+    /// the active job first (each walked step also pulls BurnRate-1 steps of progress from the bank while it lasts,
+    /// paying the burn loss on top), then the step bank up to its cap. Whatever doesn't fit is reported as overflow.
     /// </summary>
     public StepAllocation AllocateSteps(long steps)
     {
@@ -118,18 +163,37 @@ public class JobManager : MonoSingleton<JobManager>
         {
             long need = activeJob.stepsLeft;
             long bank = currencyManager.GetCurrencyAmount(CurrencyType.BankedStep);
+            double extraPerStep = BurnRate - 1.0;             // progress pulled from the bank per walked step
+            double costPerExtra = 1.0 + BurnLoss(BurnRate);   // bank spent per step of that progress
 
-            // Walked steps needed to finish: half the job while the bank can match every step, otherwise need - bank.
-            long walkedToFinish = 2 * bank >= need ? (need + 1) / 2 : need - bank;
-            long walked = Math.Min(remaining, walkedToFinish);
-            long burned = Math.Min(Math.Min(walked, bank), need - walked);
+            long walked, extra;
+            if (extraPerStep <= 0 || bank <= 0)
+            {
+                walked = Math.Min(remaining, need);
+                extra = 0;
+            }
+            else
+            {
+                // Walked steps the bank can boost fully, and walked steps needed to finish.
+                long boostable = (long)Math.Floor(bank / (extraPerStep * costPerExtra));
+                long toFinishBoosted = (long)Math.Ceiling(need / (1.0 + extraPerStep));
+                long walkedToFinish = boostable >= toFinishBoosted
+                    ? toFinishBoosted
+                    : boostable + (need - (long)Math.Floor(boostable * (1.0 + extraPerStep)));
+                walked = Math.Min(remaining, walkedToFinish);
+                extra = Math.Min(need - walked, (long)Math.Floor(Math.Min(walked, boostable) * extraPerStep));
+            }
 
-            activeJob.stepsLeft -= walked + burned;
+            // The epsilon keeps float noise (0.1f = 0.1000000015) from rounding 2,200 up to 2,201.
+            long cost = Math.Min(bank, (long)Math.Ceiling(extra * costPerExtra - 1e-4));
+
+            activeJob.stepsLeft -= walked + extra;
             remaining -= walked;
             result.toJob = walked;
-            result.bankBurned = burned;
+            result.bankBurned = extra;
+            result.bankCost = cost;
 
-            if (burned > 0) currencyManager.AddCurrency(CurrencyType.BankedStep, -burned);
+            if (cost > 0) currencyManager.AddCurrency(CurrencyType.BankedStep, -cost);
             uiManager.UpdateActiveJobStatus();
         }
 

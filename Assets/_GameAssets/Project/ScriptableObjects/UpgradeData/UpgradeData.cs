@@ -13,6 +13,10 @@ public class UpgradeData : ScriptableObject
     public string description;
     [Tooltip("0 = no limit.")]
     public int maxLevel;
+    [Tooltip("Optional display: shown value = offset + value (additive) or offset * value (multiplicative), " +
+             "formatted with displayFormat, e.g. offset 3 and \"{0:0.0}x\" shows the max burn rate.")]
+    public float displayOffset;
+    public string displayFormat;
 
     public long CostAtLevel(int level) => (long)(Math.Pow(costExponent, level) * baseCost);
     public bool IsMaxed(int level) => maxLevel > 0 && level >= maxLevel;
@@ -28,5 +32,6 @@ public struct UpgradeEffect
 
 public enum UpgradeType
 {
-    FuelEfficiency, IncomeMultiplier, BankedStepCap, FuelTank, FuelRegen, ExpressIncome, ExpressFrequency
+    FuelEfficiency, IncomeMultiplier, BankedStepCap, FuelTank, FuelRegen, ExpressIncome, ExpressFrequency,
+    BurnRateMax, BurnLoss
 }

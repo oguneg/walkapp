@@ -5,7 +5,8 @@ public struct StepAllocation
 {
     public long total;      // walked steps processed
     public long toJob;      // walked steps that moved the active job
-    public long bankBurned; // banked steps spent alongside them (2x speed while the bank lasts) - bonus, not part of total
+    public long bankBurned; // job progress pulled from the step bank (burn rate) - bonus, not part of total
+    public long bankCost;   // banked steps that progress cost (more than bankBurned above the loss-free burn rate)
     public long toBank;     // walked steps deposited into the step bank
     public long overflow;   // walked steps lost because the bank was full
 
@@ -16,6 +17,7 @@ public struct StepAllocation
         total += other.total;
         toJob += other.toJob;
         bankBurned += other.bankBurned;
+        bankCost += other.bankCost;
         toBank += other.toBank;
         overflow += other.overflow;
     }

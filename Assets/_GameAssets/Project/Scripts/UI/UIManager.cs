@@ -43,9 +43,9 @@ public class UIManager : MonoSingleton<UIManager>
 
         var express = ExpressJobManager.instance;
         express.OnOfferCreated += _ => ShowExpressOfferPopup();
-        express.OnChanged += UpdateActiveJobsDot;
+        express.OnChanged += UpdateExpressDot;
         if (express.HasOffer && !express.OfferSeen) ShowExpressOfferPopup();
-        UpdateActiveJobsDot();
+        UpdateExpressDot();
 
         DailyBonusManager.instance.OnStarsEarnedToday += (gained, _) =>
             PopupManager.instance.EnqueuePopup(PopupType.PopupStarEarned, p => ((PopupStarEarned)p).Initialize(gained));
@@ -75,6 +75,13 @@ public class UIManager : MonoSingleton<UIManager>
         tabButtons[(int)TabType.Fleet].SetNotificationDotStatus(FleetManager.instance.CanAffordNextTruck);
     }
 
+    /// <summary>Yes/no prompt. onConfirm runs only on the confirm button.</summary>
+    public void ShowConfirm(string title, string message, string confirmLabel, string cancelLabel, System.Action onConfirm)
+    {
+        PopupManager.instance.EnqueuePopup(PopupType.PopupConfirm,
+            popup => ((PopupConfirm)popup).Initialize(title, message, confirmLabel, cancelLabel, onConfirm));
+    }
+
     private void ShowExpressOfferPopup()
     {
         if (PopupManager.instance.IsShowing(PopupType.PopupExpressOffer)) return;
@@ -95,12 +102,14 @@ public class UIManager : MonoSingleton<UIManager>
     {
         activeTab?.Deactivate();
         this.DOKill();
-        var isComingFromRight = (int)tabType >= activeTabIndex;
+        // Slide direction follows the buttons' order on screen, not the enum (Express was added later but sits second).
+        int index = tabButtons[(int)tabType].transform.GetSiblingIndex();
+        var isComingFromRight = index >= activeTabIndex;
         ShowTab(tabs[(int)tabType], isComingFromRight);
         HideTab(activeTab, !isComingFromRight);
         activeTab = tabs[(int)tabType];
         activeTab.Activate();
-        activeTabIndex = (int)tabType;
+        activeTabIndex = index;
     }
 
     private void ShowTab(TabView tab, bool isComingFromRight)
@@ -121,6 +130,9 @@ public class UIManager : MonoSingleton<UIManager>
         OnTabButtonClicked(tabButtons[(int)tabType]);
     }
 
+    // For buttons wired in the inspector (UnityEvents can't pass enums).
+    public void OpenJobList() => ForceTab(TabType.JobList);
+
     public void AddJob(JobData jobData)
     {
         jobListView.AddJob(jobData);
@@ -137,6 +149,12 @@ public class UIManager : MonoSingleton<UIManager>
         activeJobView.UpdateStatus();
     }
 
+    /// <summary>No regular job: hide the panel, show the empty state.</summary>
+    public void ClearActiveJob()
+    {
+        activeJobView.ClearJobView();
+    }
+
     public void OnActiveJobResponse(ActiveJobView jobView, bool response)
     {
         AudioManager.instance.PlaySound(response?SoundType.Success:SoundType.Fail);
@@ -145,21 +163,31 @@ public class UIManager : MonoSingleton<UIManager>
         SetActiveJobTabButtonNotificationLight(false);
     }
 
+    public void AbandonActiveJob()
+    {
+        if (JobManager.instance.activeJob == null) return;
+        OnActiveJobResponse(activeJobView, false);
+    }
+
     public void SetActiveJobTabButtonNotificationLight(bool isActive)
     {
         regularJobClaimable = isActive;
         UpdateActiveJobsDot();
     }
 
-    // The Active Jobs dot means "something to do there": a regular job to claim, an express offer to answer,
-    // or an express result to collect.
     private void UpdateActiveJobsDot()
+    {
+        tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(regularJobClaimable);
+    }
+
+    // Express dot: an offer to answer, or a result to collect.
+    private void UpdateExpressDot()
     {
         var express = ExpressJobManager.instance;
         var job = express.Job;
-        bool expressNeedsAttention = express.HasOffer ||
-                                     (job != null && (job.status == ExpressStatus.Completed || job.status == ExpressStatus.Failed));
-        tabButtons[(int)TabType.ActiveJobs].SetNotificationDotStatus(regularJobClaimable || expressNeedsAttention);
+        bool attention = express.HasOffer ||
+                         (job != null && (job.status == ExpressStatus.Completed || job.status == ExpressStatus.Failed));
+        tabButtons[(int)TabType.Express].SetNotificationDotStatus(attention);
     }
 
     public void UpdateCompletedJobCount(int i)

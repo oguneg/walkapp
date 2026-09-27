@@ -26,6 +26,17 @@ namespace OgunWorks.UI
         public Button claimButton;
         [SerializeField] private Image stepProgressBar, timeProgressBar;
 
+        [Header("Burn rate")]
+        [SerializeField] private Slider burnSlider;
+        [SerializeField] private TextMeshProUGUI burnValueText, burnInfoText;
+        [Tooltip("Shown instead of this panel when there is no regular job.")]
+        [SerializeField] private GameObject emptyState;
+
+        private void Awake()
+        {
+            if (burnSlider) burnSlider.onValueChanged.AddListener(v => JobManager.instance.BurnRate = v);
+        }
+
         public void AssignJob(ActiveJobSaveData job)
         {
             assignedJob = job;
@@ -42,6 +53,7 @@ namespace OgunWorks.UI
 
             claimButton.interactable = false;
             gameObject.SetActive(true);
+            if (emptyState) emptyState.SetActive(false);
             assignedJob.state = JobState.Active;
             UpdateStatus();
         }
@@ -54,12 +66,9 @@ namespace OgunWorks.UI
             long left = System.Math.Max(0, assignedJob.stepsLeft);
             stepProgressBar.fillAmount = total <= 0 ? 1f : 1f - left / (float)total;
             stepsLeftText.text = $"<sprite=1>{total - left:N0} / {total:N0}";
-            if (hintText)
-            {
-                long bank = CurrencyManager.instance.GetCurrencyAmount(CurrencyType.BankedStep);
-                hintText.text = bank > 0 ? $"{left:N0} to go · banked steps double your speed" : $"{left:N0} to go";
-            }
+            if (hintText) hintText.text = $"{left:N0} to go";
 
+            RefreshBurn();
             RefreshBonus();
             if (left <= 0) CompleteJob();
         }
@@ -80,11 +89,39 @@ namespace OgunWorks.UI
 
         private DailyBonusManager daily;
 
+        // Slider range follows the Burn Rate Booster upgrade; the text spells out what a walked step does.
+        private void RefreshBurn()
+        {
+            if (!burnSlider) return;
+            var jobs = JobManager.instance;
+            float rate = jobs.BurnRate;
+            burnSlider.minValue = 1f;
+            burnSlider.maxValue = jobs.MaxBurnRate;
+            burnSlider.SetValueWithoutNotify(rate);
+
+            float loss = jobs.BurnLoss(rate);
+            burnValueText.text = loss > 0
+                ? $"<b>{rate:0.0}x</b> <color=#FF9A8A>-{loss * 100:0}%</color>"
+                : $"<b>{rate:0.0}x</b>";
+
+            long bank = CurrencyManager.instance.GetCurrencyAmount(CurrencyType.BankedStep);
+            float pulled = rate - 1f;
+            if (pulled <= 0f)
+                burnInfoText.text = "Bank untouched: only walked steps count.";
+            else if (bank <= 0)
+                burnInfoText.text = "Step bank is empty, so walked steps count 1:1.";
+            else if (loss > 0)
+                burnInfoText.text = $"Each step adds {pulled:0.0} from your bank, costing {pulled * (1 + loss):0.00}.";
+            else
+                burnInfoText.text = $"Each step adds {pulled:0.0} from your bank, no loss.";
+        }
+
         private void OnEnable()
         {
             daily = DailyBonusManager.instance;
             daily.OnChanged += RefreshBonus;
             RefreshBonus();
+            RefreshBurn(); // max rate may have changed in Upgrades
         }
 
         // Cached reference: touching a MonoSingleton's instance during teardown can spawn a temporary one.
@@ -108,7 +145,16 @@ namespace OgunWorks.UI
 
         public void OnResponseButton(bool isAccepted)
         {
-            OnJobResponse?.Invoke(this, isAccepted);
+            if (isAccepted || assignedJob == null)
+            {
+                OnJobResponse?.Invoke(this, isAccepted);
+                return;
+            }
+
+            UIManager.instance.ShowConfirm("ABANDON JOB?",
+                $"Drop the <b>{assignedJob.jobData.cargoType}</b> delivery? Progress and the fuel you paid are lost.",
+                "ABANDON", "KEEP GOING",
+                () => { if (assignedJob != null) OnJobResponse?.Invoke(this, false); });
         }
 
         public void ClearJobView()
@@ -117,6 +163,7 @@ namespace OgunWorks.UI
             StopAllCoroutines();
             isEmpty = true;
             gameObject.SetActive(false);
+            if (emptyState) emptyState.SetActive(true);
         }
     }
 }

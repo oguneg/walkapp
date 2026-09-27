@@ -100,5 +100,6 @@ public enum PopupType
     PopupOfflineSteps,
     PopupExpressOffer,
     PopupRefuel,
-    PopupStarEarned
+    PopupStarEarned,
+    PopupConfirm
 }

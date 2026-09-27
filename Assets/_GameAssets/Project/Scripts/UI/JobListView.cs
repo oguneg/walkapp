@@ -32,15 +32,27 @@ public class JobListView : MonoBehaviour
             return;
         }
 
-        // One regular job at a time: accepting used to silently replace the running job (and its progress).
-        if (JobManager.instance.activeJob != null)
+        var job = jobOfferView.assignedJob;
+
+        // One regular job at a time: ask before replacing the running one (its progress would be lost).
+        var current = JobManager.instance.activeJob;
+        if (current != null)
         {
-            AudioManager.instance.PlaySound(SoundType.Fail);
-            UIManager.instance.ForceTab(TabType.ActiveJobs);
+            string progress = current.stepsLeft <= 0
+                ? "It's delivered and waiting to be claimed."
+                : $"It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.";
+            UIManager.instance.ShowConfirm("JOB IN PROGRESS",
+                $"You're already hauling <b>{current.jobData.cargoType}</b>. {progress}\n\nReplace it with <b>{job.cargoType}</b>? The current job and its progress will be lost.",
+                "REPLACE", "KEEP CURRENT",
+                () =>
+                {
+                    if (jobOfferView.assignedJob != job) return;
+                    UIManager.instance.AbandonActiveJob();
+                    OnJobResponse(jobOfferView, true);
+                });
             return;
         }
 
-        var job = jobOfferView.assignedJob;
         if (CurrencyManager.instance.CanAfford(CurrencyType.Fuel, job.fuelCost))
         {
             CurrencyManager.instance.AddCurrency(CurrencyType.Fuel, -job.fuelCost);

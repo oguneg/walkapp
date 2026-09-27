@@ -56,7 +56,9 @@ public class PopupOfflineSteps : PopupBase
     {
         var lines = new List<string>();
         if (a.bankBurned > 0)
-            lines.Add($"Your truck also burned <b>{a.bankBurned:N0}</b> banked steps for double speed.");
+            lines.Add(a.bankCost > a.bankBurned
+                ? $"Your step bank added <b>{a.bankBurned:N0}</b> steps to the job (cost {a.bankCost:N0})."
+                : $"Your step bank added <b>{a.bankBurned:N0}</b> steps to the job.");
         if (a.overflow > 0)
             lines.Add("Your step depot was full. Upgrade it to keep more steps.");
         return string.Join("\n", lines);
