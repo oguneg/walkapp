@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2ddae5fd05efcd8419cecdcaa6efcbeb, type: 3}
-  m_Name: BankedStepCapUpgrade
+  m_Name: FuelTankUpgrade
   m_EditorClassIdentifier: 
   upgradeEffects:
-  - type: 2
-    increaseValue: 500
+  - type: 3
+    increaseValue: 100
     isMultiplicative: 0
-  baseCost: 500
-  costExponent: 1.05
-  upgradeName: Larger Step Depot
-  upgradeSaveKey: bankedStepCap01
-  description: Bank more steps while idle
+  baseCost: 2000
+  costExponent: 1.12
+  upgradeName: Bigger Fuel Tank
+  upgradeSaveKey: fueltankupgrade
+  description: Carry more fuel between refills
   maxLevel: 0

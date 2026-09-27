@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using OgunWorks.UI;
@@ -14,21 +13,46 @@ public class JobListView : MonoBehaviour
         {
             element.OnJobResponse += OnJobResponse;
         }
+
+        CurrencyManager.instance.OnCurrencyAmountChanged += OnCurrencyChanged;
+    }
+
+    private void OnCurrencyChanged(CurrencyType type, long amount)
+    {
+        if (type != CurrencyType.Fuel) return;
+        foreach (var view in jobOfferViews)
+            if (!view.isEmpty) view.RefreshAffordability();
     }
 
     private void OnJobResponse(JobOfferView jobOfferView, bool isAccepted)
     {
-        if (isAccepted)
+        if (!isAccepted)
         {
-            if (CurrencyManager.instance.CanAfford(CurrencyType.Fuel, jobOfferView.assignedJob.fuelCost))
-            {
-                CurrencyManager.instance.AddCurrency(CurrencyType.Fuel, -jobOfferView.assignedJob.fuelCost);
-                OnJobAccepted(jobOfferView);
-            }
+            OnJobRemoved(jobOfferView);
+            return;
+        }
+
+        // One regular job at a time: accepting used to silently replace the running job (and its progress).
+        if (JobManager.instance.activeJob != null)
+        {
+            AudioManager.instance.PlaySound(SoundType.Fail);
+            UIManager.instance.ForceTab(TabType.ActiveJobs);
+            return;
+        }
+
+        var job = jobOfferView.assignedJob;
+        if (CurrencyManager.instance.CanAfford(CurrencyType.Fuel, job.fuelCost))
+        {
+            CurrencyManager.instance.AddCurrency(CurrencyType.Fuel, -job.fuelCost);
+            OnJobAccepted(jobOfferView);
         }
         else
         {
-            OnJobRemoved(jobOfferView);
+            // Not enough fuel: offer the fuel station, then take the job if the player refuels.
+            UIManager.instance.ShowRefuel(job.fuelCost, () =>
+            {
+                if (jobOfferView.assignedJob == job) OnJobResponse(jobOfferView, true);
+            });
         }
     }
 

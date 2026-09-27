@@ -20,3 +20,5 @@ MonoBehaviour:
   costExponent: 1.05
   upgradeName: Networking
   upgradeSaveKey: incomeUpgrade01
+  description: More coins from every job
+  maxLevel: 0

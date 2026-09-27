@@ -72,9 +72,9 @@ MonoBehaviour:
       m_HorizontalBearingY: 220
       m_HorizontalAdvance: 300
     m_GlyphRect:
-      m_X: 0
+      m_X: 2
       m_Y: 255
-      m_Width: 255
+      m_Width: 253
       m_Height: 255
     m_Scale: 1
     m_AtlasIndex: 0
@@ -136,9 +136,9 @@ MonoBehaviour:
       m_HorizontalBearingY: 220
       m_HorizontalAdvance: 300
     m_GlyphRect:
-      m_X: 1
+      m_X: 2
       m_Y: 1
-      m_Width: 255
+      m_Width: 254
       m_Height: 255
     m_Scale: 1
     m_AtlasIndex: 0

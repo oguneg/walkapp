@@ -27,7 +27,7 @@ namespace OgunWorks.UI
         [SerializeField] private Color failedColor = new Color32(0xA8, 0x48, 0x3F, 0xFF);
 
         [Header("Height (the parent layout group stacks the regular job below)")]
-        [SerializeField] private float compactHeight = 250f;
+        [SerializeField] private float compactHeight = 300f;
         [SerializeField] private float fullHeight = 470f;
 
         private const float GiveUpConfirmSeconds = 3f;
@@ -72,13 +72,16 @@ namespace OgunWorks.UI
             titleText.text = "EXPRESS DELIVERIES";
             detailText.text = manager.CompletedCount > 0
                 ? $"Rush jobs that pay 3-5x.\nDelivered so far: <b>{manager.CompletedCount}</b>"
-                : "Rush jobs that pay 3-5x.\nBe ready to walk!";
+                : "Rush jobs that pay 3-5x.\nCan't wait? Call the dispatcher.";
             TimeSpan eta = manager.NextOfferUtc - GameClock.UtcNow;
             timerText.text = eta > TimeSpan.Zero ? GameClock.FormatDuration(eta) : "soon";
             timerLabelText.text = "next offer";
             rewardText.text = "";
             progressGroup.SetActive(false);
-            SetButtons(null, null);
+
+            long cost = manager.DispatcherCost;
+            SetButtons($"CALL <sprite=0>{NumberFormat.Compact(cost)}", null);
+            primaryButton.interactable = CurrencyManager.instance.CanAfford(CurrencyType.Coin, cost);
         }
 
         private void ShowOffer(ExpressOffer offer)
@@ -180,6 +183,7 @@ namespace OgunWorks.UI
 
         private void SetButtons(string primary, string secondary)
         {
+            primaryButton.interactable = true;
             primaryButton.gameObject.SetActive(primary != null);
             if (primary != null) primaryButtonText.text = primary;
             secondaryButton.gameObject.SetActive(secondary != null);
@@ -191,7 +195,15 @@ namespace OgunWorks.UI
             ExpressJob job = manager.Job;
             if (job == null)
             {
-                if (manager.HasOffer) manager.AcceptOffer();
+                if (manager.HasOffer)
+                {
+                    manager.AcceptOffer();
+                }
+                else if (!manager.CallDispatcher())
+                {
+                    AudioManager.instance.PlaySound(SoundType.Fail);
+                    return;
+                }
             }
             else if (job.status == ExpressStatus.Completed)
             {

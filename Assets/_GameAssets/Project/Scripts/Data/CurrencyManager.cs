@@ -18,7 +18,10 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
 
     public UnityAction<CurrencyType, long> OnCurrencyAmountChanged;
 
-    public long GetFuelCap => currencies[(int)CurrencyType.Fuel].initialCap;
+    public long GetFuelCap => currencyCaps[CurrencyType.Fuel];
+
+    /// <summary>Fuel is stored in thousandths of a displayed unit.</summary>
+    public const long FuelUnit = 1000;
 
     private const string LAST_SESSION_TIME_KEY = "LastSessionTime_UTC";
     
@@ -62,13 +65,13 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
             foreach (Currency currency in currencies)
             {
                 if (currency.regenerateOffline &&
-                    currencyAmounts[currency.CurrencyType] < currency.initialCap)
+                    currencyAmounts[currency.CurrencyType] < currencyCaps[currency.CurrencyType])
                 {
                     activeRegenTimers[currency.CurrencyType] += 1;
 
                     if (activeRegenTimers[currency.CurrencyType] >= currency.regenIntervalInSeconds)
                     {
-                        AddCurrency(currency.CurrencyType, currency.regenRate);
+                        AddCurrency(currency.CurrencyType, RegenAmount(currency));
                         activeRegenTimers[currency.CurrencyType] -= currency.regenIntervalInSeconds;
                     }
                 }
@@ -111,6 +114,9 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
 
     private void LoadCurrencies()
     {
+        // Upgrades and trucks are already applied (their Awake), so the caps are final before regen runs.
+        CheckCaps();
+
         foreach (Currency currency in currencies)
         {
             long defaultValue = currency.hasCap && currency.regenerateOffline ? currency.initialCap : 0;
@@ -140,13 +146,13 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
                 if (currency.regenerateOffline && currency.regenIntervalInSeconds > 0)
                 {
                     // If full, skip
-                    if (currencyAmounts[currency.CurrencyType] >= currency.initialCap) continue;
+                    if (currencyAmounts[currency.CurrencyType] >= currencyCaps[currency.CurrencyType]) continue;
 
                     long intervals = (long)(timeAway.TotalSeconds / currency.regenIntervalInSeconds);
 
                     if (intervals > 0)
                     {
-                        AddCurrency(currency.CurrencyType, intervals * currency.regenRate);
+                        AddCurrency(currency.CurrencyType, intervals * RegenAmount(currency));
 
                         float remainder = (float)(timeAway.TotalSeconds % currency.regenIntervalInSeconds);
                         activeRegenTimers[currency.CurrencyType] = remainder;
@@ -176,10 +182,21 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     public void CheckCaps()
     {
         currencyCaps[CurrencyType.BankedStep] = currencyMap[CurrencyType.BankedStep].initialCap +
-                                                (long)upgradeManager.globalMultipliers[2];
+                                                (long)upgradeManager.Get(UpgradeType.BankedStepCap);
 
-        AddCurrency(CurrencyType.BankedStep, 0);
+        long extraTankUnits = (long)upgradeManager.Get(UpgradeType.FuelTank) + FleetManager.instance.FuelTankBonus;
+        currencyCaps[CurrencyType.Fuel] = currencyMap[CurrencyType.Fuel].initialCap + extraTankUnits * FuelUnit;
+
+        // Caps only ever grow, so nothing is clamped here. Clamping used to cut the saved bank down to the
+        // first Depot level's cap on every launch, because saved levels were re-applied one at a time.
+        OnCurrencyAmountChanged?.Invoke(CurrencyType.BankedStep, currencyAmounts[CurrencyType.BankedStep]);
+        OnCurrencyAmountChanged?.Invoke(CurrencyType.Fuel, currencyAmounts[CurrencyType.Fuel]);
     }
+
+    private long RegenAmount(Currency currency) =>
+        currency.CurrencyType == CurrencyType.Fuel
+            ? (long)(currency.regenRate * upgradeManager.Get(UpgradeType.FuelRegen))
+            : currency.regenRate;
 
     public long GetCurrencyAmount(CurrencyType type)
     {

@@ -43,6 +43,27 @@ public class UIManager : MonoSingleton<UIManager>
         express.OnChanged += UpdateActiveJobsDot;
         if (express.HasOffer && !express.OfferSeen) ShowExpressOfferPopup();
         UpdateActiveJobsDot();
+
+        FleetManager.instance.OnChanged += UpdateFleetDot;
+        CurrencyManager.instance.OnCurrencyAmountChanged += (type, _) =>
+        {
+            if (type == CurrencyType.Coin) UpdateFleetDot();
+        };
+        UpdateFleetDot();
+    }
+
+    /// <summary>Fuel station popup. neededFuel = what a job needs (0 to just fill up); onRefueled runs after paying.</summary>
+    public void ShowRefuel(long neededFuel, System.Action onRefueled)
+    {
+        if (PopupManager.instance.IsShowing(PopupType.PopupRefuel)) return;
+        PopupManager.instance.EnqueuePopup(PopupType.PopupRefuel,
+            popup => ((PopupRefuel)popup).Initialize(neededFuel, onRefueled));
+    }
+
+    // Fleet dot: the next truck is affordable.
+    private void UpdateFleetDot()
+    {
+        tabButtons[(int)TabType.Fleet].SetNotificationDotStatus(FleetManager.instance.CanAffordNextTruck);
     }
 
     private void ShowExpressOfferPopup()

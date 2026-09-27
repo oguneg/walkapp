@@ -58,4 +58,6 @@ public class ExpressSaveData
     public long nextOfferUnix;
     public int completedCount;
     public int failedCount;
+    public int dispatchDay;   // local date as yyyymmdd
+    public int dispatchCalls; // paid dispatcher calls on that day
 }

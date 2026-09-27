@@ -21,6 +21,18 @@ public partial class SROptions
     }
     
     [Category("Test")]
+    public void Add100kMoney()
+    {
+        CurrencyManager.instance.AddCurrency(CurrencyType.Coin, 100000);
+    }
+
+    [Category("Test")]
+    public void ResetFleet()
+    {
+        FleetManager.instance.DebugResetFleet();
+    }
+
+    [Category("Test")]
     public void Add100Fuel()
     {
         CurrencyManager.instance.AddCurrency(CurrencyType.Fuel,100000);

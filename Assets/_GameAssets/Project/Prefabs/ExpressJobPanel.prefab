@@ -35,7 +35,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 40, y: 36}
-  m_SizeDelta: {x: -510, y: 64}
+  m_SizeDelta: {x: -540, y: 64}
   m_Pivot: {x: 0, y: 0}
 --- !u!222 &8985049379256220198
 CanvasRenderer:
@@ -722,7 +722,7 @@ MonoBehaviour:
   activeColor: {r: 0.8235294, g: 0.39607844, b: 0.12156863, a: 1}
   completedColor: {r: 0.24313726, g: 0.6039216, b: 0.29411766, a: 1}
   failedColor: {r: 0.65882355, g: 0.28235295, b: 0.24705882, a: 1}
-  compactHeight: 250
+  compactHeight: 300
   fullHeight: 470
 --- !u!1 &3615249982672419666
 GameObject:

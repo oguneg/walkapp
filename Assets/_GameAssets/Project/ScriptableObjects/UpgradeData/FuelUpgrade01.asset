@@ -20,3 +20,5 @@ MonoBehaviour:
   costExponent: 1.05
   upgradeName: Eco Driving
   upgradeSaveKey: fuelUpgrade01
+  description: New jobs burn less fuel
+  maxLevel: 0

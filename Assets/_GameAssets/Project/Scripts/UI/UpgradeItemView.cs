@@ -1,4 +1,4 @@
-using System;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,47 +7,73 @@ public class UpgradeItemView : MonoBehaviour
 {
     [SerializeField] private Button buyButton;
     [SerializeField] private TextMeshProUGUI upgradeNameText, upgradeDescriptionText, upgradeCostText;
-    private int upgradeLevel;
+    [SerializeField] private TextMeshProUGUI levelText, valueText;
     private UpgradeData assignedUpgrade;
-    private long upgradeCost;
+
+    // Views and managers live in the same scene for its whole lifetime, so no unsubscribe is needed
+    // (touching a MonoSingleton's instance in OnDestroy during quit would spawn a temporary one).
     public void AssignUpgrade(UpgradeData upgrade)
     {
-        assignedUpgrade = upgrade;
-        upgradeNameText.text = upgrade.upgradeName;
-        upgradeDescriptionText.text = $"{upgrade.upgradeEffects[0].type} {(upgrade.upgradeEffects[0].isMultiplicative?'x':'+')}{upgrade.upgradeEffects[0].increaseValue}";
-        LoadUpgradeLevel();
-        CalculateCost();
-    }
-
-    private void LoadUpgradeLevel()
-    {
-        upgradeLevel = PlayerPrefs.GetInt(assignedUpgrade.upgradeSaveKey, 0);
-        for (int i = 0; i < upgradeLevel; i++)
+        if (assignedUpgrade == null)
         {
-            foreach (var effect in assignedUpgrade.upgradeEffects)
-            {
-                UpgradeManager.instance.UpdateMultiplier(effect.type, effect.increaseValue, effect.isMultiplicative);
-            }
+            UpgradeManager.instance.OnUpgradesChanged += Refresh;
+            CurrencyManager.instance.OnCurrencyAmountChanged += OnCurrencyChanged;
         }
+
+        assignedUpgrade = upgrade;
+        Refresh();
     }
 
-    private void CalculateCost()
+    private void OnCurrencyChanged(CurrencyType type, long amount)
     {
-        upgradeCost = (long)(Math.Pow(assignedUpgrade.costExponent, upgradeLevel) * assignedUpgrade.baseCost);
-        upgradeCostText.text = $"<sprite=0>{upgradeCost:N0}";
+        if (type == CurrencyType.Coin) Refresh();
+    }
+
+    private void Refresh()
+    {
+        if (assignedUpgrade == null) return;
+
+        var manager = UpgradeManager.instance;
+        int level = manager.GetLevel(assignedUpgrade);
+        bool maxed = assignedUpgrade.IsMaxed(level);
+        long cost = assignedUpgrade.CostAtLevel(level);
+
+        upgradeNameText.text = assignedUpgrade.upgradeName;
+        upgradeDescriptionText.text = string.IsNullOrEmpty(assignedUpgrade.description)
+            ? assignedUpgrade.upgradeEffects[0].type.ToString()
+            : assignedUpgrade.description;
+        if (levelText) levelText.text = maxed ? $"Lv {level} · MAX" : $"Lv {level}";
+        if (valueText) valueText.text = FormatValue(assignedUpgrade.upgradeEffects[0], manager, maxed);
+
+        upgradeCostText.text = maxed ? "MAX" : $"<sprite=0>{cost:N0}";
+        buyButton.interactable = !maxed && CurrencyManager.instance.CanAfford(CurrencyType.Coin, cost);
+    }
+
+    // "x1.27 > x1.30" or "+2,000 > +2,500": what you have now and what the next level gives.
+    private static string FormatValue(UpgradeEffect effect, UpgradeManager manager, bool maxed)
+    {
+        float now = manager.Get(effect.type);
+        if (effect.isMultiplicative)
+        {
+            float next = now * effect.increaseValue;
+            return maxed ? $"x{now:0.00}" : $"x{now:0.00} <color=#FFFFFFAA>></color> <b>x{next:0.00}</b>";
+        }
+
+        float after = now + effect.increaseValue;
+        return maxed ? $"+{now:N0}" : $"+{now:N0} <color=#FFFFFFAA>></color> <b>+{after:N0}</b>";
     }
 
     public void OnBuyButtonClick()
     {
-        if (CurrencyManager.instance.CanAfford(CurrencyType.Coin, upgradeCost))
+        if (UpgradeManager.instance.TryBuy(assignedUpgrade))
         {
-            CurrencyManager.instance.AddCurrency(CurrencyType.Coin, -upgradeCost);
-            upgradeLevel++;
-            PlayerPrefs.SetInt(assignedUpgrade.upgradeSaveKey, upgradeLevel);
-            var upgradeEffect = assignedUpgrade.upgradeEffects[0];
-            UpgradeManager.instance.UpdateMultiplier(upgradeEffect.type, upgradeEffect.increaseValue, upgradeEffect.isMultiplicative);
-            CalculateCost();
-            AudioManager.instance.PlaySound(SoundType.Button);        
+            AudioManager.instance.PlaySound(SoundType.Button);
+            transform.DOKill(true);
+            transform.DOPunchScale(Vector3.one * 0.04f, 0.25f, 6);
+        }
+        else
+        {
+            AudioManager.instance.PlaySound(SoundType.Fail);
         }
     }
 }

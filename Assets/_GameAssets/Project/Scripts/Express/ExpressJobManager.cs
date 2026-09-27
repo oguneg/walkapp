@@ -35,6 +35,10 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
         public int activeHourEnd = 22;
         [Tooltip("While a job runs, how often the OS step history is re-read (seconds).")]
         public float historyRefreshSeconds = 60f;
+        [Tooltip("Coins to call the dispatcher for an offer right now. Doubles with every call on the same day.")]
+        public long dispatcherBaseCost = 2500;
+        [Tooltip("Dispatcher Network upgrades can't shorten the wait between offers below this share.")]
+        public float minIntervalMultiplier = 0.4f;
     }
 
     [SerializeField] private Tuning tuning = new Tuning();
@@ -53,6 +57,19 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
     public DateTime NextOfferUtc => GameClock.FromUnix(data.nextOfferUnix);
     public int CompletedCount => data.completedCount;
     public int FailedCount => data.failedCount;
+
+    /// <summary>A dispatcher call is possible when nothing is offered or running.</summary>
+    public bool CanCallDispatcher => !data.hasOffer && !data.hasJob;
+    public long DispatcherCost => tuning.dispatcherBaseCost << Math.Min(10, DispatcherCallsToday);
+    private int DispatcherCallsToday => data.dispatchDay == TodayKey ? data.dispatchCalls : 0;
+    private static int TodayKey
+    {
+        get
+        {
+            DateTime local = GameClock.UtcNow.ToLocalTime();
+            return local.Year * 10000 + local.Month * 100 + local.Day;
+        }
+    }
 
     private bool IsRunning => data.hasJob && data.job.status == ExpressStatus.Active;
 
@@ -117,7 +134,9 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
         int duration = tuning.durationsMinutes[Random.Range(0, tuning.durationsMinutes.Length)];
         float pace = Random.Range(tuning.stepsPerMinute.x, tuning.stepsPerMinute.y);
         int target = Mathf.Max(500, Mathf.RoundToInt(duration * pace / 100f) * 100);
-        float income = UpgradeManager.instance.globalMultipliers[(int)UpgradeType.IncomeMultiplier];
+        var upgrades = UpgradeManager.instance;
+        float income = upgrades.Get(UpgradeType.IncomeMultiplier) * upgrades.Get(UpgradeType.ExpressIncome) *
+                       FleetManager.instance.RewardMultiplier;
 
         data.offer = new ExpressOffer
         {
@@ -174,8 +193,25 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
 
     private void ScheduleNextOffer()
     {
-        int minutes = Random.Range(tuning.offerIntervalMinutes.x, tuning.offerIntervalMinutes.y + 1);
-        data.nextOfferUnix = ClampToActiveHours(GameClock.UnixNow + minutes * 60L);
+        float frequency = Mathf.Max(tuning.minIntervalMultiplier, UpgradeManager.instance.Get(UpgradeType.ExpressFrequency));
+        float minutes = Random.Range(tuning.offerIntervalMinutes.x, tuning.offerIntervalMinutes.y + 1) * frequency;
+        data.nextOfferUnix = ClampToActiveHours(GameClock.UnixNow + (long)(minutes * 60f));
+    }
+
+    /// <summary>Pay to get an offer right now instead of waiting (a coin sink). Price doubles per call each day.</summary>
+    public bool CallDispatcher()
+    {
+        if (!CanCallDispatcher) return false;
+
+        long cost = DispatcherCost;
+        if (!CurrencyManager.instance.CanAfford(CurrencyType.Coin, cost)) return false;
+
+        CurrencyManager.instance.AddCurrency(CurrencyType.Coin, -cost);
+        int today = TodayKey;
+        data.dispatchCalls = data.dispatchDay == today ? data.dispatchCalls + 1 : 1;
+        data.dispatchDay = today;
+        CreateOffer();
+        return true;
     }
 
     private long ClampToActiveHours(long unix)

@@ -9,6 +9,13 @@ public class UpgradeData : ScriptableObject
     public float costExponent;
     public string upgradeName;
     public string upgradeSaveKey;
+    [Tooltip("Shown under the name, e.g. \"More coins from every job\".")]
+    public string description;
+    [Tooltip("0 = no limit.")]
+    public int maxLevel;
+
+    public long CostAtLevel(int level) => (long)(Math.Pow(costExponent, level) * baseCost);
+    public bool IsMaxed(int level) => maxLevel > 0 && level >= maxLevel;
 }
 
 [Serializable]
@@ -21,5 +28,5 @@ public struct UpgradeEffect
 
 public enum UpgradeType
 {
-    FuelEfficiency, IncomeMultiplier, BankedStepCap
+    FuelEfficiency, IncomeMultiplier, BankedStepCap, FuelTank, FuelRegen, ExpressIncome, ExpressFrequency
 }

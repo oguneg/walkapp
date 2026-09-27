@@ -98,5 +98,6 @@ public enum PopupType
     PopupBase,
     PopupJobComplete,
     PopupOfflineSteps,
-    PopupExpressOffer
+    PopupExpressOffer,
+    PopupRefuel
 }
