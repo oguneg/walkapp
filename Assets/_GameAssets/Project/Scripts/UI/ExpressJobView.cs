@@ -136,7 +136,7 @@ namespace OgunWorks.UI
                     progressFill.fillAmount = 1f;
                     progressText.text = $"<sprite=1>{Math.Max(job.finalSteps, job.bestProgress):N0} / {offer.targetSteps:N0}";
                     hintText.text = "";
-                    SetButtons("CLAIM", null);
+                    SetButtons($"CLAIM <sprite=0>{NumberFormat.Compact(DailyBonusManager.instance.ApplyBonus(offer.reward))}", null);
                     break;
 
                 case ExpressStatus.Failed:

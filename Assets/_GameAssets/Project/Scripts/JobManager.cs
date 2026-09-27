@@ -93,7 +93,7 @@ public class JobManager : MonoSingleton<JobManager>
         {
             completedJobCount++;
             experienceManager.AddExperience(activeJob.jobData.distance * 10);
-            currencyManager.AddCurrency(CurrencyType.Coin, activeJob.jobData.reward);
+            currencyManager.AddCurrency(CurrencyType.Coin, DailyBonusManager.instance.ApplyBonus(activeJob.jobData.reward));
             uiManager.UpdateCompletedJobCount(completedJobCount);
         }
 

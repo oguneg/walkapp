@@ -13,6 +13,9 @@ public class UIManager : MonoSingleton<UIManager>
     [SerializeField] private TextMeshProUGUI completedJobsText;
     [SerializeField] private TextMeshProUGUI bankedStepsText;
     [SerializeField] private RectTransform tabPos, tabLeftPos, tabRightPos;
+    [Tooltip("Pedometer readouts and log buttons, shown by the small DEBUG button on the Stats tab.")]
+    [SerializeField] private GameObject statsDebugPanel;
+    [SerializeField] private UnityEngine.UI.Button statsDebugButton;
     
     private const float tabMoveSpeed = 0.2f;
     
@@ -43,6 +46,12 @@ public class UIManager : MonoSingleton<UIManager>
         express.OnChanged += UpdateActiveJobsDot;
         if (express.HasOffer && !express.OfferSeen) ShowExpressOfferPopup();
         UpdateActiveJobsDot();
+
+        DailyBonusManager.instance.OnStarsEarnedToday += (gained, _) =>
+            PopupManager.instance.EnqueuePopup(PopupType.PopupStarEarned, p => ((PopupStarEarned)p).Initialize(gained));
+
+        if (statsDebugButton)
+            statsDebugButton.onClick.AddListener(() => statsDebugPanel.SetActive(!statsDebugPanel.activeSelf));
 
         FleetManager.instance.OnChanged += UpdateFleetDot;
         CurrencyManager.instance.OnCurrencyAmountChanged += (type, _) =>

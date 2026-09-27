@@ -166,6 +166,7 @@ public class StepManager : MonoSingleton<StepManager>
 #endif
         JobManager.instance.AllocateSteps(steps);
         ExpressJobManager.instance.OnLiveSteps(steps);
+        DailyBonusManager.instance.OnLiveSteps(steps);
         UpdateGUI();
     }
 
@@ -259,6 +260,7 @@ public class StepManager : MonoSingleton<StepManager>
         totalSteps += steps;
         StepAllocation allocation = JobManager.instance.AllocateSteps(steps);
         ExpressJobManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
+        DailyBonusManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
         UpdateGUI();
 
         if (showPopup && steps >= offlinePopupThreshold)

@@ -352,7 +352,7 @@ public class ExpressJobManager : MonoSingleton<ExpressJobManager>
     {
         if (!data.hasJob || data.job.status != ExpressStatus.Completed) return;
 
-        CurrencyManager.instance.AddCurrency(CurrencyType.Coin, data.job.offer.reward);
+        CurrencyManager.instance.AddCurrency(CurrencyType.Coin, DailyBonusManager.instance.ApplyBonus(data.job.offer.reward));
         ExperienceManager.instance.AddExperience(data.job.offer.experience);
         data.completedCount++;
         EndJob();

@@ -74,6 +74,31 @@ public partial class SROptions
         StepManager.instance.DebugSimulateAway(10000, 180);
     }
 
+    [Category("Daily")]
+    public void PastSixDays7000Steps()
+    {
+        DailyBonusManager.instance.DebugFillPastDays(7000);
+    }
+
+    [Category("Daily")]
+    public void PastSixDays15000Steps()
+    {
+        DailyBonusManager.instance.DebugFillPastDays(15000);
+    }
+
+    [Category("Daily")]
+    public void SkipToTomorrow()
+    {
+        var now = GameClock.UtcNow.ToLocalTime();
+        GameClock.DebugAdvance(now.Date.AddDays(1).AddMinutes(1) - now);
+    }
+
+    [Category("Daily")]
+    public void ResetDailyStars()
+    {
+        DailyBonusManager.instance.DebugReset();
+    }
+
     [Category("Express")]
     public void SpawnExpressOffer()
     {
