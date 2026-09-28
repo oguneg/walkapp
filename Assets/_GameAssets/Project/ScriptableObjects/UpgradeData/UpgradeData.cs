@@ -35,5 +35,5 @@ public struct UpgradeEffect
 public enum UpgradeType
 {
     FuelEfficiency, IncomeMultiplier, BankedStepCap, FuelTank, FuelRegen, ExpressIncome, ExpressFrequency,
-    BurnRateMax, BurnLoss
+    BurnRateMax, BurnLoss, QueueSlots
 }

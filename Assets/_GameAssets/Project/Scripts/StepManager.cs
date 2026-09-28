@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -20,8 +21,9 @@ using UnityEngine.Android;
 /// Android's step counter is cumulative since boot, so the offline amount is a counter delta.
 /// iOS's counter restarts at 0 every time it is enabled, so the offline amount comes from StepHistory (CMPedometer).
 ///
-/// If the running job's deadline fell inside the away time, the job only gets the steps walked before it
-/// (split with StepHistory, or by time share without it), the job is settled, and the rest goes to the bank.
+/// Deadlines that fell inside the away time (the running job's and the queued job's) split it into segments,
+/// credited in order with StepHistory (or by time share without it): a job only gets steps walked before its
+/// deadline, a finished job hands over to the queued one, and the rest goes to the bank.
 /// </summary>
 public class StepManager : MonoSingleton<StepManager>
 {
@@ -255,84 +257,80 @@ public class StepManager : MonoSingleton<StepManager>
     {
         offlineSteps = Math.Max(0, steps);
         var jobs = JobManager.instance;
-        ActiveJobSaveData job = jobs.activeJob;
-        bool jobWasRunning = job != null && job.IsRunning;
         var allocation = new StepAllocation();
+        jobs.BeginAwayReport();
+
+        // Deadlines inside the away time split it into segments, credited in order: a job only gets steps walked
+        // before its deadline, a job that ends hands over to the queued one, and the rest goes to the bank.
+        var cuts = new List<DateTime>();
+        foreach (var job in new[] { jobs.activeJob, jobs.queuedJob })
+            if (job != null && job.IsRunning && job.DeadlineUtc > fromUtc && job.DeadlineUtc < toUtc)
+                cuts.Add(job.DeadlineUtc);
+        cuts.Sort();
+        cuts.Add(toUtc);
+
+        if (steps > 0) totalSteps += steps;
+        long left = Math.Max(0, steps);
+        double span = (toUtc - fromUtc).TotalSeconds;
+        DateTime segmentStart = fromUtc;
+
+        for (int i = 0; i < cuts.Count; i++)
+        {
+            DateTime segmentEnd = cuts[i];
+            bool last = i == cuts.Count - 1;
+            long segment = left;
+
+            // Steps in this segment: the OS step history when there is one, otherwise the time share.
+            if (!last && left > 0)
+            {
+                segment = span > 0 ? (long)Math.Round(steps * (segmentEnd - segmentStart).TotalSeconds / span) : 0;
+                if (StepHistory.IsSupported)
+                {
+                    long? history = null;
+                    bool done = false;
+                    StepHistory.QuerySteps(segmentStart, segmentEnd, result =>
+                    {
+                        history = result;
+                        done = true;
+                    });
+
+                    float waited = 0f;
+                    while (!done && waited < HistoryTimeout)
+                    {
+                        waited += Time.unscaledDeltaTime;
+                        yield return null;
+                    }
+
+                    if (history.HasValue) segment = history.Value;
+                }
+
+                segment = Math.Clamp(segment, 0, left);
+            }
+
+            allocation.Add(jobs.AllocateSteps(segment, GameClock.ToUnix(segmentEnd)));
+            left -= segment;
+            // Settle the deadline this segment ends on before the next segment's steps arrive.
+            yield return jobs.ResolveDeadline(GameClock.ToUnix(segmentEnd));
+            segmentStart = segmentEnd;
+        }
 
         if (steps > 0)
         {
-            totalSteps += steps;
-
-            // The job only gets what was walked by its deadline.
-            long beforeDeadline = steps;
-            DateTime walkedBy = toUtc;
-            if (jobWasRunning && job.DeadlineUtc < toUtc)
-            {
-                walkedBy = job.DeadlineUtc > fromUtc ? job.DeadlineUtc : fromUtc;
-                beforeDeadline = 0;
-                if (walkedBy > fromUtc)
-                {
-                    double share = (walkedBy - fromUtc).TotalSeconds / (toUtc - fromUtc).TotalSeconds;
-                    beforeDeadline = (long)Math.Round(steps * share);
-
-                    if (StepHistory.IsSupported)
-                    {
-                        long? history = null;
-                        bool done = false;
-                        StepHistory.QuerySteps(fromUtc, walkedBy, result =>
-                        {
-                            history = result;
-                            done = true;
-                        });
-
-                        float waited = 0f;
-                        while (!done && waited < HistoryTimeout)
-                        {
-                            waited += Time.unscaledDeltaTime;
-                            yield return null;
-                        }
-
-                        if (history.HasValue) beforeDeadline = Math.Clamp(history.Value, 0, steps);
-                    }
-                }
-            }
-
-            allocation.Add(jobs.AllocateSteps(beforeDeadline, GameClock.ToUnix(walkedBy)));
-            // Settle a job whose deadline passed while away before the later steps go to the bank.
-            yield return jobs.ResolveDeadline();
-            allocation.Add(jobs.AllocateSteps(steps - beforeDeadline, GameClock.ToUnix(toUtc)));
-
             ExpressJobManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
             DailyBonusManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
-        }
-        else
-        {
-            yield return jobs.ResolveDeadline();
         }
 
         UpdateGUI();
 
-        // Also report a job that was delivered or missed while away, even on a lazy day.
-        string jobNote = jobWasRunning ? JobOutcomeNote(job) : null;
+        // Also report jobs that were delivered or missed while away, even on a lazy day.
+        List<string> notes = jobs.EndAwayReport();
+        string jobNote = notes.Count > 0 ? string.Join("\n", notes) : null;
         if (showPopup && (steps >= offlinePopupThreshold || jobNote != null))
         {
             TimeSpan? awayFor = toUtc > fromUtc ? toUtc - fromUtc : (TimeSpan?)null;
             var report = new OfflineStepReport(allocation, awayFor, jobNote);
             PopupManager.instance.EnqueuePopup(PopupType.PopupOfflineSteps,
                 popup => ((PopupOfflineSteps)popup).Initialize(report));
-        }
-    }
-
-    private static string JobOutcomeNote(ActiveJobSaveData job)
-    {
-        switch (job.state)
-        {
-            case JobState.Claimable:
-                return $"<b>{job.jobData.cargoType}</b> delivered! Your pay is waiting on the Active tab.";
-            case JobState.Failed:
-                return $"<b>{job.jobData.cargoType}</b> missed its deadline, {job.stepsLeft:N0} steps short.";
-            default:
-                return null;
         }
     }
 

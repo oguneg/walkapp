@@ -16,6 +16,9 @@ public class ActiveJobSaveData
     // Walked steps credited to this job (bank burn not included). The deadline check compares it with the
     // OS step history for [accept, deadline] to catch steps that were walked in time but credited late.
     public long walkedSteps;
+    // When the job started taking steps: its accept time, or later for a job that waited in the queue
+    // (its deadline runs from when it was queued, its steps only from here).
+    public long activeFromUnix;
 
     public bool isValid = false;
 
@@ -25,6 +28,7 @@ public class ActiveJobSaveData
         stepsLeft = data.steps;
         acceptUnix = GameClock.UnixNow;
         deadlineUnix = acceptUnix + Math.Max(1, data.timeInMinutes) * 60L;
+        activeFromUnix = acceptUnix;
         state = JobState.Active;
         isValid = true;
     }
@@ -32,6 +36,7 @@ public class ActiveJobSaveData
     public ActiveJobSaveData() { }
 
     public DateTime AcceptUtc => GameClock.FromUnix(acceptUnix);
+    public DateTime ActiveFromUtc => GameClock.FromUnix(activeFromUnix > 0 ? activeFromUnix : acceptUnix);
     public DateTime DeadlineUtc => GameClock.FromUnix(deadlineUnix);
     public TimeSpan TimeLeft => DeadlineUtc - GameClock.UtcNow;
     public bool IsRunning => state == JobState.Active;
@@ -51,6 +56,34 @@ public class ActiveJobSaveData
 public static class JobSaveManager
 {
     private const string JOB_KEY = "CurrentActiveJob";
+    private const string QUEUE_KEY = "QueuedJob";
+
+    public static void SaveQueued(ActiveJobSaveData job)
+    {
+        PlayerPrefs.SetString(QUEUE_KEY, JsonUtility.ToJson(job));
+        PlayerPrefs.Save();
+    }
+
+    public static ActiveJobSaveData LoadQueued()
+    {
+        if (!PlayerPrefs.HasKey(QUEUE_KEY)) return null;
+        try
+        {
+            var job = JsonUtility.FromJson<ActiveJobSaveData>(PlayerPrefs.GetString(QUEUE_KEY));
+            return job != null && job.jobData != null ? job : null;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to load queued job: " + e.Message);
+            return null;
+        }
+    }
+
+    public static void ClearQueued()
+    {
+        PlayerPrefs.DeleteKey(QUEUE_KEY);
+        PlayerPrefs.Save();
+    }
 
     public static void SaveJob(ActiveJobSaveData activeJob)
     {

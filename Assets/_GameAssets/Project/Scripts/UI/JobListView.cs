@@ -34,8 +34,25 @@ public class JobListView : MonoBehaviour
 
         var job = jobOfferView.assignedJob;
 
+        var jobs = JobManager.instance;
+
+        // A queue slot (upgrade) lets it wait behind the running job instead.
+        if (jobs.CanQueue)
+        {
+            AskToQueue(jobOfferView, job);
+            return;
+        }
+
+        if (jobs.QueueFull && jobs.activeJob != null && jobs.activeJob.IsRunning)
+        {
+            UIManager.instance.ShowMessage("QUEUE FULL",
+                $"<b>{jobs.queuedJob.jobData.cargoType}</b> is already waiting in your queue. It starts when <b>{jobs.activeJob.jobData.cargoType}</b> is done.",
+                "OK");
+            return;
+        }
+
         // One job at a time, regular or express: free the slot first (UIManager asks when something would be lost).
-        if (!JobManager.instance.JobSlotFree)
+        if (!jobs.JobSlotFree)
         {
             UIManager.instance.RequestJobSlot(job.cargoType.ToString(), () =>
             {
@@ -44,19 +61,50 @@ public class JobListView : MonoBehaviour
             return;
         }
 
-        if (CurrencyManager.instance.CanAfford(CurrencyType.Fuel, job.fuelCost))
+        TakeJob(jobOfferView, job, queue: false);
+    }
+
+    // The clock rule, spelled out: the queued job's deadline runs from now, its steps only after the current job.
+    private void AskToQueue(JobOfferView jobOfferView, JobData job)
+    {
+        var current = JobManager.instance.activeJob;
+        string limit = JobOfferView.FormatLimit(job.timeInMinutes);
+        UIManager.instance.ShowConfirm("QUEUE THIS JOB?",
+            $"<b>{job.cargoType}</b> starts as soon as <b>{current.jobData.cargoType}</b> is done.\n\n" +
+            $"Its {limit} deadline starts now: walk {current.stepsLeft:N0} more for <b>{current.jobData.cargoType}</b>, then {job.steps:N0} for <b>{job.cargoType}</b>, all within {limit}.",
+            "QUEUE IT", "CANCEL",
+            () =>
+            {
+                if (jobOfferView.assignedJob == job) TakeJob(jobOfferView, job, queue: true);
+            });
+    }
+
+    // Pay the fuel, then accept or queue. Not enough fuel: offer the fuel station first.
+    private void TakeJob(JobOfferView jobOfferView, JobData job, bool queue)
+    {
+        var currency = CurrencyManager.instance;
+        if (!currency.CanAfford(CurrencyType.Fuel, job.fuelCost))
         {
-            CurrencyManager.instance.AddCurrency(CurrencyType.Fuel, -job.fuelCost);
-            OnJobAccepted(jobOfferView);
-        }
-        else
-        {
-            // Not enough fuel: offer the fuel station, then take the job if the player refuels.
             UIManager.instance.ShowRefuel(job.fuelCost, () =>
             {
-                if (jobOfferView.assignedJob == job) OnJobResponse(jobOfferView, true);
+                if (jobOfferView.assignedJob == job) TakeJob(jobOfferView, job, queue);
             });
+            return;
         }
+
+        currency.AddCurrency(CurrencyType.Fuel, -job.fuelCost);
+        var jobs = JobManager.instance;
+        bool taken = queue ? jobs.QueueJob(job) : jobs.AcceptJob(job);
+        if (!taken)
+        {
+            currency.AddCurrency(CurrencyType.Fuel, job.fuelCost); // the slot filled up meanwhile
+            AudioManager.instance.PlaySound(SoundType.Fail);
+            return;
+        }
+
+        jobOfferView.Deactivate();
+        activeJobCount--;
+        AudioManager.instance.PlaySound(SoundType.Button);
     }
 
     public void AddJob(JobData jobData)
@@ -98,14 +146,6 @@ public class JobListView : MonoBehaviour
                 if (!child.GetComponent<JobOfferView>()) n++;
             return n;
         }
-    }
-
-    private void OnJobAccepted(JobOfferView jobOfferView)
-    {
-        JobManager.instance.AcceptJob(jobOfferView.assignedJob);
-        jobOfferView.Deactivate();
-        activeJobCount--;
-        AudioManager.instance.PlaySound(SoundType.Button);
     }
 
     private void OnJobRemoved(JobOfferView jobOfferView)

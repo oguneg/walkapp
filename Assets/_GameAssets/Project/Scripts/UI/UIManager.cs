@@ -14,6 +14,8 @@ public class UIManager : MonoSingleton<UIManager>
     [SerializeField] private ExpressJobView expressBoardView;
     [Tooltip("Express card on the Active tab: an accepted express job until it's claimed or dismissed.")]
     [SerializeField] private ExpressJobView expressActiveView;
+    [Tooltip("Queued job card under the running job on the Active tab.")]
+    [SerializeField] private QueuedJobView queuedJobView;
     [SerializeField] private TextMeshProUGUI completedJobsText;
     [SerializeField] private TextMeshProUGUI bankedStepsText;
     [SerializeField] private RectTransform tabPos, tabLeftPos, tabRightPos;
@@ -65,6 +67,9 @@ public class UIManager : MonoSingleton<UIManager>
 
         if (statsDebugButton)
             statsDebugButton.onClick.AddListener(() => statsDebugPanel.SetActive(!statsDebugPanel.activeSelf));
+
+        JobManager.instance.OnQueueChanged += RefreshQueue;
+        RefreshQueue();
 
         FleetManager.instance.OnChanged += UpdateFleetDot;
         CurrencyManager.instance.OnCurrencyAmountChanged += (type, _) =>
@@ -229,8 +234,17 @@ public class UIManager : MonoSingleton<UIManager>
         bool acknowledgingMiss = !response && job != null && job.state == JobState.Failed;
         AudioManager.instance.PlaySound(response ? SoundType.Success : acknowledgingMiss ? SoundType.Button : SoundType.Fail);
         JobManager.instance.EndJob(response);
-        jobView.ClearJobView();
+        // A queued job may have moved up into the card; only clear it when nothing did.
+        if (JobManager.instance.activeJob == null) jobView.ClearJobView();
         UpdateActiveJobsDot();
+    }
+
+    private void RefreshQueue()
+    {
+        if (!queuedJobView) return;
+        bool queued = JobManager.instance.queuedJob != null;
+        queuedJobView.gameObject.SetActive(queued);
+        if (queued) queuedJobView.Refresh();
     }
 
     public void AbandonActiveJob()
@@ -307,12 +321,15 @@ public class UIManager : MonoSingleton<UIManager>
                     });
                 return;
             default:
+                var queued = JobManager.instance.queuedJob;
+                string queueLine = queued != null ? $" Your queued <b>{queued.jobData.cargoType}</b> is dropped too (fuel refunded)." : "";
                 ShowConfirm("JOB IN PROGRESS",
-                    $"You're already hauling <b>{current.jobData.cargoType}</b>. It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.\n\nReplace it with <b>{newJob}</b>? The current job and its progress will be lost.",
+                    $"You're already hauling <b>{current.jobData.cargoType}</b>. It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.\n\nReplace it with <b>{newJob}</b>? The current job and its progress will be lost.{queueLine}",
                     "REPLACE", "KEEP CURRENT",
                     () =>
                     {
                         if (JobManager.instance.activeJob != current) return;
+                        JobManager.instance.RemoveQueued();
                         AbandonActiveJob();
                         take();
                     });

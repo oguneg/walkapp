@@ -46,7 +46,8 @@ public class UpgradeManager : MonoSingleton<UpgradeManager>
     }
 
     public static bool IsAdditive(UpgradeType type) =>
-        type == UpgradeType.BankedStepCap || type == UpgradeType.FuelTank || type == UpgradeType.BurnRateMax;
+        type == UpgradeType.BankedStepCap || type == UpgradeType.FuelTank || type == UpgradeType.BurnRateMax ||
+        type == UpgradeType.QueueSlots;
 
     public float Get(UpgradeType type) => globalMultipliers[(int)type];
 

@@ -35,6 +35,14 @@ public class JobManager : MonoSingleton<JobManager>
 
     public List<JobData> availableJobs;
     public ActiveJobSaveData activeJob;
+    /// <summary>
+    /// The next job, waiting for the current one to end (Job Queue upgrade). Its deadline runs from when it was
+    /// queued; it only takes steps once it becomes the active job.
+    /// </summary>
+    public ActiveJobSaveData queuedJob;
+
+    /// <summary>A job was queued, removed from the queue, or moved up to active.</summary>
+    public event Action OnQueueChanged;
     public int completedJobCount = 0;
     private UIManager uiManager;
     private CurrencyManager currencyManager;
@@ -122,6 +130,10 @@ public class JobManager : MonoSingleton<JobManager>
             uiManager.ClearActiveJob();
         }
 
+        queuedJob = JobSaveManager.LoadQueued();
+        if (queuedJob != null && activeJob == null) PromoteQueued(GameClock.UnixNow);
+        OnQueueChanged?.Invoke();
+
         StartCoroutine(DeadlineRoutine());
 
         // A job type that unlocks shows up on top of the list right away instead of waiting for a free slot.
@@ -207,7 +219,107 @@ public class JobManager : MonoSingleton<JobManager>
         uiManager.DisplayActiveJob(activeJob);
     }
 
-    public void EndJob(bool isSuccess)
+    // ---------------------------------------------------------------- queue
+
+    public int QueueSlots => Mathf.RoundToInt(upgradeManager.Get(UpgradeType.QueueSlots));
+
+    /// <summary>A job can be queued: a queue slot is owned and free, and a regular job is running.</summary>
+    public bool CanQueue => QueueSlots > 0 && queuedJob == null && activeJob != null && activeJob.IsRunning &&
+                            !ExpressJobManager.instance.HasJob;
+
+    public bool QueueFull => QueueSlots > 0 && queuedJob != null;
+
+    /// <summary>Queue a job behind the running one. Fuel is paid by the caller; the deadline starts now.</summary>
+    public bool QueueJob(JobData job)
+    {
+        if (!CanQueue) return false;
+        queuedJob = new ActiveJobSaveData(job);
+        JobSaveManager.SaveQueued(queuedJob);
+        OnQueueChanged?.Invoke();
+        uiManager.ForceTab(TabType.ActiveJobs);
+        return true;
+    }
+
+    /// <summary>Take the queued job back out; it never started, so its fuel is refunded.</summary>
+    public void RemoveQueued()
+    {
+        if (queuedJob == null) return;
+        currencyManager.AddCurrency(CurrencyType.Fuel, queuedJob.jobData.fuelCost);
+        queuedJob = null;
+        JobSaveManager.ClearQueued();
+        OnQueueChanged?.Invoke();
+    }
+
+    // The queued job becomes the active job and starts taking steps from atUnix.
+    private void PromoteQueued(long atUnix)
+    {
+        var next = queuedJob;
+        queuedJob = null;
+        JobSaveManager.ClearQueued();
+
+        next.state = JobState.Active;
+        next.activeFromUnix = atUnix;
+        activeJob = next;
+        JobSaveManager.SaveJob(activeJob);
+        DisplayActiveJob();
+        OnQueueChanged?.Invoke();
+    }
+
+    // The active job just ended with a job queued behind it: collect it (pay a delivery, drop a miss)
+    // and move the queued one up, so the queue runs back to back even while the app is closed.
+    private void AdvanceQueue(long atUnix)
+    {
+        var done = activeJob;
+        var next = queuedJob;
+        bool delivered = done.state == JobState.Claimable;
+        string first = delivered
+            ? $"<b>{done.jobData.cargoType}</b> delivered: +<sprite=0>{DailyBonusManager.instance.ApplyBonus(done.jobData.reward):N0}."
+            : $"<b>{done.jobData.cargoType}</b> missed its deadline, {done.stepsLeft:N0} steps short.";
+        if (delivered) AudioManager.instance.PlaySound(SoundType.Success);
+
+        EndJob(delivered, atUnix);
+        Report(delivered ? "DELIVERED!" : "MISSED THE DEADLINE",
+            $"{first} <b>{next.jobData.cargoType}</b> from your queue is on the road now.", popupWhenLive: true);
+    }
+
+    // A queued job whose clock ran out before it could start leaves the queue (its fuel is spent).
+    private void DropExpiredQueued(long asOfUnix)
+    {
+        if (queuedJob == null || queuedJob.deadlineUnix > asOfUnix) return;
+        string cargo = queuedJob.jobData.cargoType.ToString();
+        queuedJob = null;
+        JobSaveManager.ClearQueued();
+        OnQueueChanged?.Invoke();
+        Report("QUEUE", $"<b>{cargo}</b> left your queue: its deadline passed before it could start.", popupWhenLive: true);
+    }
+
+    // ---------------------------------------------------------------- job outcome notes
+
+    private List<string> awayNotes;
+
+    /// <summary>While the away steps are credited, outcomes are collected for the "while you were away" popup.</summary>
+    public void BeginAwayReport() => awayNotes = new List<string>();
+
+    public List<string> EndAwayReport()
+    {
+        var notes = awayNotes ?? new List<string>();
+        awayNotes = null;
+        return notes;
+    }
+
+    private void Report(string title, string note, bool popupWhenLive)
+    {
+        if (awayNotes != null) awayNotes.Add(note);
+        else if (popupWhenLive) uiManager.ShowMessage(title, note, "OK");
+    }
+
+    // ---------------------------------------------------------------- ending jobs
+
+    /// <summary>
+    /// Pays a delivered job (isSuccess) and clears it. A queued job then moves up and takes steps from
+    /// <paramref name="promoteAtUnix"/> (default: now).
+    /// </summary>
+    public void EndJob(bool isSuccess, long promoteAtUnix = -1)
     {
         if (activeJob == null) return;
         if (isSuccess && activeJob.state == JobState.Claimable)
@@ -220,6 +332,8 @@ public class JobManager : MonoSingleton<JobManager>
 
         activeJob = null;
         JobSaveManager.ClearJob();
+
+        if (queuedJob != null) PromoteQueued(promoteAtUnix >= 0 ? promoteAtUnix : GameClock.UnixNow);
     }
 
     public void RegisterSteps(int amount) => AllocateSteps(amount);
@@ -239,17 +353,24 @@ public class JobManager : MonoSingleton<JobManager>
         long remaining = result.total;
         if (remaining == 0) return result;
 
+        // A job finished by these steps hands the rest to the queued job (if its deadline allows).
         var job = activeJob;
-        if (job != null && job.IsRunning && job.stepsLeft > 0 && walkedByUnix <= job.deadlineUnix)
+        while (remaining > 0 && job != null && job.IsRunning && job.stepsLeft > 0 && walkedByUnix <= job.deadlineUnix)
         {
             StepAllocation used = ApplyToJob(remaining);
             remaining -= used.toJob;
-            result.toJob = used.toJob;
-            result.bankBurned = used.bankBurned;
-            result.bankCost = used.bankCost;
+            result.toJob += used.toJob;
+            result.bankBurned += used.bankBurned;
+            result.bankCost += used.bankCost;
 
-            if (job.stepsLeft <= 0) Deliver();
-            else uiManager.UpdateActiveJobStatus();
+            if (job.stepsLeft > 0)
+            {
+                uiManager.UpdateActiveJobStatus();
+                break;
+            }
+
+            Deliver(walkedByUnix);
+            job = activeJob;
         }
 
         if (remaining > 0)
@@ -309,17 +430,31 @@ public class JobManager : MonoSingleton<JobManager>
 
     // ---------------------------------------------------------------- deadlines
 
-    private void Deliver()
+    private void Deliver(long atUnix)
     {
         activeJob.stepsLeft = 0;
         activeJob.state = JobState.Claimable;
+        if (queuedJob != null)
+        {
+            AdvanceQueue(atUnix);
+            return;
+        }
+
+        Report("DELIVERED!", $"<b>{activeJob.jobData.cargoType}</b> delivered! Your pay is waiting on the Active tab.", popupWhenLive: false);
         uiManager.UpdateActiveJobStatus();
     }
 
-    private void Fail()
+    private void Fail(long atUnix)
     {
         activeJob.state = JobState.Failed;
         AudioManager.instance.PlaySound(SoundType.Fail);
+        if (queuedJob != null)
+        {
+            AdvanceQueue(atUnix);
+            return;
+        }
+
+        Report("MISSED THE DEADLINE", $"<b>{activeJob.jobData.cargoType}</b> missed its deadline, {activeJob.stepsLeft:N0} steps short.", popupWhenLive: false);
         uiManager.UpdateActiveJobStatus();
     }
 
@@ -331,7 +466,9 @@ public class JobManager : MonoSingleton<JobManager>
         while (true)
         {
             yield return wait;
-            if (activeJob != null && activeJob.IsRunning && activeJob.IsPastDeadline && StepManager.instance.StepsSettled)
+            bool activeDue = activeJob != null && activeJob.IsRunning && activeJob.IsPastDeadline;
+            bool queuedDue = queuedJob != null && queuedJob.IsPastDeadline;
+            if ((activeDue || queuedDue) && StepManager.instance.StepsSettled)
                 yield return ResolveDeadline();
         }
     }
@@ -342,39 +479,52 @@ public class JobManager : MonoSingleton<JobManager>
     /// being killed) still count, pulling from the bank at the burn rate like any other step. If that covers the
     /// job it's delivered and waits to be claimed; otherwise it's failed.
     /// </summary>
-    public IEnumerator ResolveDeadline()
+    public IEnumerator ResolveDeadline() => ResolveDeadline(GameClock.UnixNow);
+
+    /// <summary>
+    /// Settles every deadline up to <paramref name="asOfUnix"/> (the end of an away segment, or now): an expired
+    /// queued job leaves the queue, and an active job past its deadline is delivered or failed, which moves the
+    /// queued job up (and it may be settled in turn).
+    /// </summary>
+    public IEnumerator ResolveDeadline(long asOfUnix)
     {
-        var job = activeJob;
-        if (job == null || !job.IsRunning || !job.IsPastDeadline || resolvingDeadline) yield break;
+        if (resolvingDeadline) yield break;
         resolvingDeadline = true;
+        DropExpiredQueued(asOfUnix);
 
-        if (job.stepsLeft > 0 && StepHistory.IsSupported)
+        while (activeJob != null && activeJob.IsRunning && activeJob.deadlineUnix <= asOfUnix)
         {
-            long? walked = null;
-            bool done = false;
-            StepHistory.QuerySteps(job.AcceptUtc, job.DeadlineUtc, result =>
+            var job = activeJob;
+            long from = GameClock.ToUnix(job.ActiveFromUtc);
+            if (job.stepsLeft > 0 && StepHistory.IsSupported && from < job.deadlineUnix)
             {
-                walked = result;
-                done = true;
-            });
+                long? walked = null;
+                bool done = false;
+                StepHistory.QuerySteps(job.ActiveFromUtc, job.DeadlineUtc, result =>
+                {
+                    walked = result;
+                    done = true;
+                });
 
-            float waited = 0f;
-            while (!done && waited < HistoryTimeout)
-            {
-                waited += Time.unscaledDeltaTime;
-                yield return null;
+                float waited = 0f;
+                while (!done && waited < HistoryTimeout)
+                {
+                    waited += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+
+                // Leftover steps aren't banked here: late-credited steps may already be in the bank.
+                if (activeJob == job && job.IsRunning && walked.HasValue && walked.Value > job.walkedSteps)
+                    ApplyToJob(walked.Value - job.walkedSteps);
             }
 
-            // Leftover steps aren't banked here: late-credited steps may already be in the bank.
-            if (activeJob == job && job.IsRunning && walked.HasValue && walked.Value > job.walkedSteps)
-                ApplyToJob(walked.Value - job.walkedSteps);
+            if (activeJob != job || !job.IsRunning) continue;
+            if (job.stepsLeft <= 0) Deliver(job.deadlineUnix);
+            else Fail(job.deadlineUnix);
         }
 
+        DropExpiredQueued(asOfUnix);
         resolvingDeadline = false;
-        if (activeJob != job || !job.IsRunning) yield break;
-
-        if (job.stepsLeft <= 0) Deliver();
-        else Fail();
     }
 
     // Jobs saved before deadlines existed get a fresh time limit for their type.
@@ -401,17 +551,14 @@ public class JobManager : MonoSingleton<JobManager>
 
     private void OnApplicationPause(bool pauseStatus)
     {
-        if (pauseStatus && activeJob != null)
-        {
-            JobSaveManager.SaveJob(activeJob);
-        }
+        if (!pauseStatus) return;
+        if (activeJob != null) JobSaveManager.SaveJob(activeJob);
+        if (queuedJob != null) JobSaveManager.SaveQueued(queuedJob);
     }
 
     void OnApplicationQuit()
     {
-        if (activeJob != null)
-        {
-            JobSaveManager.SaveJob(activeJob);
-        }
+        if (activeJob != null) JobSaveManager.SaveJob(activeJob);
+        if (queuedJob != null) JobSaveManager.SaveQueued(queuedJob);
     }
 }
