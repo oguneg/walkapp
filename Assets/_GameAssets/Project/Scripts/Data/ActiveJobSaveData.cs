@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -53,8 +54,37 @@ public class ActiveJobSaveData
     }
 }
 
+[Serializable]
+public class FinishedJobList
+{
+    public List<ActiveJobSaveData> jobs = new List<ActiveJobSaveData>();
+}
+
 public static class JobSaveManager
 {
+    private const string FINISHED_KEY = "FinishedJobs";
+
+    public static void SaveFinished(List<ActiveJobSaveData> jobs)
+    {
+        PlayerPrefs.SetString(FINISHED_KEY, JsonUtility.ToJson(new FinishedJobList { jobs = jobs }));
+        PlayerPrefs.Save();
+    }
+
+    public static List<ActiveJobSaveData> LoadFinished()
+    {
+        if (!PlayerPrefs.HasKey(FINISHED_KEY)) return new List<ActiveJobSaveData>();
+        try
+        {
+            var list = JsonUtility.FromJson<FinishedJobList>(PlayerPrefs.GetString(FINISHED_KEY));
+            return list?.jobs?.FindAll(j => j != null && j.jobData != null) ?? new List<ActiveJobSaveData>();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to load finished jobs: " + e.Message);
+            return new List<ActiveJobSaveData>();
+        }
+    }
+
     private const string JOB_KEY = "CurrentActiveJob";
     private const string QUEUE_KEY = "QueuedJob";
 

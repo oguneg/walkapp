@@ -16,6 +16,9 @@ public class UIManager : MonoSingleton<UIManager>
     [SerializeField] private ExpressJobView expressActiveView;
     [Tooltip("Queued job card under the running job on the Active tab.")]
     [SerializeField] private QueuedJobView queuedJobView;
+    [Tooltip("Template for the small ready-to-claim cards of jobs that ended while the queue moved on (kept inactive).")]
+    [SerializeField] private FinishedJobCard finishedJobTemplate;
+    private readonly System.Collections.Generic.List<FinishedJobCard> finishedCards = new System.Collections.Generic.List<FinishedJobCard>();
     [SerializeField] private TextMeshProUGUI completedJobsText;
     [SerializeField] private TextMeshProUGUI bankedStepsText;
     [SerializeField] private RectTransform tabPos, tabLeftPos, tabRightPos;
@@ -241,10 +244,36 @@ public class UIManager : MonoSingleton<UIManager>
 
     private void RefreshQueue()
     {
+        RefreshFinishedCards();
+        UpdateActiveJobsDot();
         if (!queuedJobView) return;
         bool queued = JobManager.instance.queuedJob != null;
         queuedJobView.gameObject.SetActive(queued);
         if (queued) queuedJobView.Refresh();
+    }
+
+    // One small card per finished job, right under the main job card (where the queue card was).
+    private void RefreshFinishedCards()
+    {
+        if (!finishedJobTemplate) return;
+        var jobs = JobManager.instance.finishedJobs;
+        while (finishedCards.Count < jobs.Count)
+        {
+            var card = Instantiate(finishedJobTemplate, finishedJobTemplate.transform.parent);
+            card.name = "FinishedJobCard";
+            finishedCards.Add(card);
+        }
+
+        int index = finishedJobTemplate.transform.GetSiblingIndex();
+        for (int i = 0; i < finishedCards.Count; i++)
+        {
+            var card = finishedCards[i];
+            bool used = i < jobs.Count;
+            bool isNew = used && (!card.gameObject.activeSelf || card.Job != jobs[i]);
+            card.gameObject.SetActive(used);
+            card.transform.SetSiblingIndex(index + 1 + i);
+            if (used) card.Bind(jobs[i], isNew);
+        }
     }
 
     public void AbandonActiveJob()
@@ -367,7 +396,7 @@ public class UIManager : MonoSingleton<UIManager>
         var express = ExpressJobManager.instance.Job;
         bool expressDone = express != null &&
                            (express.status == ExpressStatus.Completed || express.status == ExpressStatus.Failed);
-        activeAttention = regularDone || expressDone;
+        activeAttention = regularDone || expressDone || JobManager.instance.finishedJobs.Count > 0;
         UpdateDot(TabType.ActiveJobs);
     }
 

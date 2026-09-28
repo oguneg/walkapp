@@ -41,7 +41,13 @@ public class JobManager : MonoSingleton<JobManager>
     /// </summary>
     public ActiveJobSaveData queuedJob;
 
-    /// <summary>A job was queued, removed from the queue, or moved up to active.</summary>
+    /// <summary>
+    /// Jobs that ended while the queued job took over the main card, waiting to be claimed (delivered)
+    /// or acknowledged (missed). Nothing is collected automatically.
+    /// </summary>
+    public List<ActiveJobSaveData> finishedJobs = new List<ActiveJobSaveData>();
+
+    /// <summary>A job was queued, removed from the queue, moved up to active, or finished/collected from the queue.</summary>
     public event Action OnQueueChanged;
     public int completedJobCount = 0;
     private UIManager uiManager;
@@ -130,6 +136,7 @@ public class JobManager : MonoSingleton<JobManager>
             uiManager.ClearActiveJob();
         }
 
+        finishedJobs = JobSaveManager.LoadFinished();
         queuedJob = JobSaveManager.LoadQueued();
         if (queuedJob != null && activeJob == null) PromoteQueued(GameClock.UnixNow);
         OnQueueChanged?.Invoke();
@@ -265,21 +272,43 @@ public class JobManager : MonoSingleton<JobManager>
         OnQueueChanged?.Invoke();
     }
 
-    // The active job just ended with a job queued behind it: collect it (pay a delivery, drop a miss)
-    // and move the queued one up, so the queue runs back to back even while the app is closed.
+    // The active job just ended with a job queued behind it: it moves to the finished list (a small card that
+    // waits to be claimed) and the queued one moves up, so the queue runs back to back even while the app is closed.
     private void AdvanceQueue(long atUnix)
     {
         var done = activeJob;
         var next = queuedJob;
         bool delivered = done.state == JobState.Claimable;
         string first = delivered
-            ? $"<b>{done.jobData.cargoType}</b> delivered: +<sprite=0>{DailyBonusManager.instance.ApplyBonus(done.jobData.reward):N0}."
+            ? $"<b>{done.jobData.cargoType}</b> delivered, ready to claim."
             : $"<b>{done.jobData.cargoType}</b> missed its deadline, {done.stepsLeft:N0} steps short.";
         if (delivered) AudioManager.instance.PlaySound(SoundType.Success);
 
-        EndJob(delivered, atUnix);
+        finishedJobs.Add(done);
+        JobSaveManager.SaveFinished(finishedJobs);
+        activeJob = null;
+        JobSaveManager.ClearJob();
+        PromoteQueued(atUnix);
+
         Report(delivered ? "DELIVERED!" : "MISSED THE DEADLINE",
             $"{first} <b>{next.jobData.cargoType}</b> from your queue is on the road now.", popupWhenLive: true);
+    }
+
+    /// <summary>Claim a delivered job from the finished list, or acknowledge a missed one.</summary>
+    public void CollectFinished(ActiveJobSaveData job)
+    {
+        if (!finishedJobs.Remove(job)) return;
+        if (job.state == JobState.Claimable) Pay(job);
+        JobSaveManager.SaveFinished(finishedJobs);
+        OnQueueChanged?.Invoke();
+    }
+
+    private void Pay(ActiveJobSaveData job)
+    {
+        completedJobCount++;
+        experienceManager.AddExperience(job.jobData.distance * 10);
+        currencyManager.AddCurrency(CurrencyType.Coin, DailyBonusManager.instance.ApplyBonus(job.jobData.reward));
+        uiManager.UpdateCompletedJobCount(completedJobCount);
     }
 
     // A queued job whose clock ran out before it could start leaves the queue (its fuel is spent).
@@ -322,13 +351,7 @@ public class JobManager : MonoSingleton<JobManager>
     public void EndJob(bool isSuccess, long promoteAtUnix = -1)
     {
         if (activeJob == null) return;
-        if (isSuccess && activeJob.state == JobState.Claimable)
-        {
-            completedJobCount++;
-            experienceManager.AddExperience(activeJob.jobData.distance * 10);
-            currencyManager.AddCurrency(CurrencyType.Coin, DailyBonusManager.instance.ApplyBonus(activeJob.jobData.reward));
-            uiManager.UpdateCompletedJobCount(completedJobCount);
-        }
+        if (isSuccess && activeJob.state == JobState.Claimable) Pay(activeJob);
 
         activeJob = null;
         JobSaveManager.ClearJob();
