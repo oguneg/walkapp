@@ -81,6 +81,11 @@ public class StepManager : MonoSingleton<StepManager>
 
     private IEnumerator Start()
     {
+        SaveSystem.OnSave += () =>
+        {
+            if (IsReady) WriteState();
+        };
+
         // Let every other Start() run first: steps must not be credited before the saved job and currencies are loaded.
         yield return null;
 
@@ -246,8 +251,9 @@ public class StepManager : MonoSingleton<StepManager>
             hasSyncPoint = true;
         }
 
-        // Not persisted here on purpose: the baseline is saved on pause together with the bank, job and
-        // currencies it paid for. After a crash both roll back and the same steps are simply credited again.
+        // Not persisted here on purpose: the baseline is saved (autosave or pause) together with the bank, job and
+        // currencies it paid for, never mid-sync. After a crash both roll back and the same steps are simply
+        // credited again.
         // Still "syncing" while crediting: a deadline split may wait on the step history.
         yield return CreditOffline(offline, from, now, showPopup: true);
         isSyncing = false;
@@ -364,13 +370,18 @@ public class StepManager : MonoSingleton<StepManager>
 
     private void SaveState()
     {
+        WriteState();
+        PlayerPrefs.Save();
+    }
+
+    private void WriteState()
+    {
         if (hasBaseline) PlayerPrefs.SetInt(LastHardwareStepsKey, (int)liveBaseline);
         if (hasSyncPoint) PlayerPrefsX.SetLong(LastSyncUnixKey, GameClock.ToUnix(lastSyncUtc));
         PlayerPrefs.SetInt(TotalStepsKey, (int)Math.Min(totalSteps, int.MaxValue));
 #if UNITY_EDITOR
         PlayerPrefsX.SetLong(EditorCounterKey, editorCounter);
 #endif
-        PlayerPrefs.Save();
     }
 
     private void UpdateGUI()

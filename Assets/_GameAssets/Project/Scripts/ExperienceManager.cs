@@ -23,6 +23,7 @@ public class ExperienceManager : MonoSingleton<ExperienceManager>
     {
         LoadPlayerStats();
         CalculateRequiredExp();
+        SaveSystem.OnSave += WriteStats;
     }
 
     private void Start()
@@ -34,6 +35,7 @@ public class ExperienceManager : MonoSingleton<ExperienceManager>
     {
         int before = Level;
         exp += amount;
+        SaveSystem.MarkDirty();
         CheckForLevelUp();
         UpdateGUI();
         if (Level != before)
@@ -97,9 +99,13 @@ public class ExperienceManager : MonoSingleton<ExperienceManager>
 
     private void SavePlayerStats()
     {
+        WriteStats();
+        PlayerPrefs.Save();
+    }
+
+    private void WriteStats()
+    {
         PlayerPrefs.SetInt(LevelSaveKey, level);
         PlayerPrefsX.SetLong(ExpSaveKey, exp);
-
-        PlayerPrefs.Save();
     }
 }

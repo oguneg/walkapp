@@ -54,6 +54,7 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
     private void Start()
     {
         LoadCurrencies();
+        SaveSystem.OnSave += WriteCurrencies;
         StartCoroutine(UpdateTimers());
     }
 
@@ -97,9 +98,16 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
         }
 
         OnCurrencyAmountChanged?.Invoke(currencyType, currencyAmounts[currencyType]);
+        SaveSystem.MarkDirty();
     }
 
     private void SaveCurrencies()
+    {
+        WriteCurrencies();
+        PlayerPrefs.Save();
+    }
+
+    private void WriteCurrencies()
     {
         foreach (Currency currency in currencies)
         {
@@ -108,8 +116,6 @@ public class CurrencyManager : MonoSingleton<CurrencyManager>
 
         long quitTime = DateTime.UtcNow.ToBinary();
         PlayerPrefs.SetString(LAST_SESSION_TIME_KEY, quitTime.ToString());
-
-        PlayerPrefs.Save();
     }
 
     private void LoadCurrencies()

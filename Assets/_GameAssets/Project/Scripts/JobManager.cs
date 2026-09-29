@@ -142,6 +142,7 @@ public class JobManager : MonoSingleton<JobManager>
         OnQueueChanged?.Invoke();
 
         StartCoroutine(DeadlineRoutine());
+        SaveSystem.OnSave += WriteJobs;
 
         // A job type that unlocks shows up on top of the list right away instead of waiting for a free slot.
         var progression = ProgressionManager.instance;
@@ -586,6 +587,12 @@ public class JobManager : MonoSingleton<JobManager>
     public void DebugExpireDeadline()
     {
         if (activeJob != null && activeJob.IsRunning) activeJob.deadlineUnix = GameClock.UnixNow;
+    }
+
+    private void WriteJobs()
+    {
+        if (activeJob != null) JobSaveManager.SaveJob(activeJob);
+        if (queuedJob != null) JobSaveManager.SaveQueued(queuedJob);
     }
 
     private void OnApplicationPause(bool pauseStatus)
