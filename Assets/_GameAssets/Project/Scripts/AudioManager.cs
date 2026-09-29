@@ -8,12 +8,14 @@ public class AudioManager : MonoSingleton<AudioManager>
 
     public void PlaySound(SoundType soundType)
     {
+        if (!GameSettings.SoundOn) return;
         audioSource.pitch = 1f;
         audioSource.PlayOneShot(audioClips[(int)soundType]);
     }
 
     public void PlayCount(int intensity, float duration)
     {
+        if (!GameSettings.SoundOn) return;
         StartCoroutine(PlayCountRoutine(intensity, duration));
     }
 

@@ -214,7 +214,8 @@ public class JobManager : MonoSingleton<JobManager>
     {
         if (!JobSlotFree) return false;
         activeJob = new ActiveJobSaveData(job);
-        Debug.Log(activeJob);
+        // Deadlines are what notifications are for: ask for permission the first time a job is taken.
+        NotificationScheduler.instance.RequestPermission(onlyOnce: true);
         JobSaveManager.SaveJob(activeJob);
         DisplayActiveJob();
         uiManager.ForceTab(TabType.ActiveJobs);

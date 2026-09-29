@@ -203,6 +203,12 @@ public class UIManager : MonoSingleton<UIManager>
     // For buttons wired in the inspector (UnityEvents can't pass enums).
     public void OpenJobList() => ForceTab(TabType.JobList);
 
+    public void OpenSettings()
+    {
+        if (PopupManager.instance.IsShowing(PopupType.PopupSettings)) return;
+        PopupManager.instance.EnqueuePopup(PopupType.PopupSettings);
+    }
+
     /// <summary>featured: put it on top, replacing the bottom offer when the list is full.</summary>
     public void AddJob(JobData jobData, bool featured = false)
     {
