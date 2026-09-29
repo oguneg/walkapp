@@ -57,7 +57,7 @@ public class JobListView : MonoBehaviour
             UIManager.instance.RequestJobSlot(job.cargoType.ToString(), () =>
             {
                 if (jobOfferView.assignedJob == job && JobManager.instance.JobSlotFree) OnJobResponse(jobOfferView, true);
-            });
+            }, offerQueue: true);
             return;
         }
 

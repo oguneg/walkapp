@@ -16,6 +16,8 @@ public class UIManager : MonoSingleton<UIManager>
     [SerializeField] private ExpressJobView expressActiveView;
     [Tooltip("Queued job card under the running job on the Active tab.")]
     [SerializeField] private QueuedJobView queuedJobView;
+    [Tooltip("Card in the queue's place advertising the Job Queue to players who haven't bought it.")]
+    [SerializeField] private QueuePromoView queuePromoView;
     [Tooltip("Template for the small ready-to-claim cards of jobs that ended while the queue moved on (kept inactive).")]
     [SerializeField] private FinishedJobCard finishedJobTemplate;
     private readonly System.Collections.Generic.List<FinishedJobCard> finishedCards = new System.Collections.Generic.List<FinishedJobCard>();
@@ -72,6 +74,9 @@ public class UIManager : MonoSingleton<UIManager>
             statsDebugButton.onClick.AddListener(() => statsDebugPanel.SetActive(!statsDebugPanel.activeSelf));
 
         JobManager.instance.OnQueueChanged += RefreshQueue;
+        UpgradeManager.instance.OnUpgradesChanged += RefreshQueue;
+        ProgressionManager.instance.OnUnlocksChanged += RefreshQueue;
+        ExpressJobManager.instance.OnChanged += RefreshQueue;
         RefreshQueue();
 
         FleetManager.instance.OnChanged += UpdateFleetDot;
@@ -142,6 +147,41 @@ public class UIManager : MonoSingleton<UIManager>
     public void ShowMessage(string title, string message, string buttonLabel)
     {
         ShowConfirm(title, message, buttonLabel, null, null);
+    }
+
+    /// <summary>
+    /// Where "get a job queue" buttons lead. For now the Job Queue card on the Upgrades tab; this becomes the
+    /// shop once there is one.
+    /// </summary>
+    public void OpenQueueStore()
+    {
+        ForceTab(TabType.Upgrades);
+        var upgrade = JobManager.instance.QueueUpgrade;
+        var views = UpgradeManager.instance.upgradeItemViews;
+        int index = System.Array.IndexOf(UpgradeManager.instance.upgrades, upgrade);
+        if (index < 0 || index >= views.Length) return;
+        StartCoroutine(RevealUpgrade(views[index]));
+    }
+
+    // After the tab slides in: scroll the card into view and make it pop.
+    private System.Collections.IEnumerator RevealUpgrade(UpgradeItemView view)
+    {
+        yield return null;
+        var card = (RectTransform)view.transform;
+        var scroll = card.GetComponentInParent<UnityEngine.UI.ScrollRect>();
+        if (scroll && scroll.content)
+        {
+            Canvas.ForceUpdateCanvases();
+            float contentHeight = scroll.content.rect.height;
+            float viewHeight = scroll.viewport ? scroll.viewport.rect.height : ((RectTransform)scroll.transform).rect.height;
+            float fromTop = -card.localPosition.y;
+            float range = contentHeight - viewHeight;
+            if (range > 0) scroll.verticalNormalizedPosition = Mathf.Clamp01(1f - (fromTop - viewHeight / 2f) / range);
+        }
+
+        yield return new WaitForSeconds(tabMoveSpeed);
+        card.DOKill(true);
+        card.DOPunchScale(Vector3.one * 0.06f, 0.5f, 6);
     }
 
     /// <summary>Yes/no prompt. onConfirm runs only on the confirm button.</summary>
@@ -221,12 +261,14 @@ public class UIManager : MonoSingleton<UIManager>
         activeJobView.AssignJob(job);
         activeJobView.OnJobResponse = OnActiveJobResponse;
         UpdateActiveJobsDot();
+        RefreshQueue();
     }
 
     public void UpdateActiveJobStatus()
     {
         activeJobView.UpdateStatus();
         UpdateActiveJobsDot();
+        if (queuePromoView && queuePromoView.gameObject.activeSelf != JobManager.instance.CanPromoteQueue) RefreshQueue();
     }
 
     /// <summary>No regular job: hide the panel, show the empty state.</summary>
@@ -234,6 +276,7 @@ public class UIManager : MonoSingleton<UIManager>
     {
         activeJobView.ClearJobView();
         UpdateActiveJobsDot();
+        RefreshQueue();
     }
 
     /// <summary>Claim (true) or dismiss/abandon (false) the regular job.</summary>
@@ -252,6 +295,12 @@ public class UIManager : MonoSingleton<UIManager>
     {
         RefreshFinishedCards();
         UpdateActiveJobsDot();
+        if (queuePromoView)
+        {
+            bool promote = JobManager.instance.CanPromoteQueue;
+            queuePromoView.gameObject.SetActive(promote);
+            if (promote) queuePromoView.Refresh();
+        }
         if (!queuedJobView) return;
         bool queued = JobManager.instance.queuedJob != null;
         queuedJobView.gameObject.SetActive(queued);
@@ -292,7 +341,10 @@ public class UIManager : MonoSingleton<UIManager>
     /// One job at a time, regular or express. Frees the slot, then runs <paramref name="take"/>:
     /// a missed job is just cleared, a delivered one is claimed and a running one dropped, both after asking.
     /// </summary>
-    public void RequestJobSlot(string newJob, System.Action take)
+    public void RequestJobSlot(string newJob, System.Action take) => RequestJobSlot(newJob, take, offerQueue: false);
+
+    /// <param name="offerQueue">A regular job: when the queue can be bought, the prompt also offers it.</param>
+    public void RequestJobSlot(string newJob, System.Action take, bool offerQueue)
     {
         var express = ExpressJobManager.instance;
         var ex = express.Job;
@@ -358,16 +410,30 @@ public class UIManager : MonoSingleton<UIManager>
             default:
                 var queued = JobManager.instance.queuedJob;
                 string queueLine = queued != null ? $" Your queued <b>{queued.jobData.cargoType}</b> is dropped too (fuel refunded)." : "";
+                System.Action replace = () =>
+                {
+                    if (JobManager.instance.activeJob != current) return;
+                    JobManager.instance.RemoveQueued();
+                    AbandonActiveJob();
+                    take();
+                };
+                string progress = $"You're already hauling <b>{current.jobData.cargoType}</b>. It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.";
+
+                // Can't queue yet but could buy it: say what a queue would do here, and offer it first.
+                var queueUpgrade = JobManager.instance.QueueUpgrade;
+                if (offerQueue && JobManager.instance.CanPromoteQueue)
+                {
+                    PopupManager.instance.EnqueuePopup(PopupType.PopupConfirm, popup => ((PopupConfirm)popup).Initialize(
+                        "JOB IN PROGRESS",
+                        $"{progress}\n\nWith a <b>Job Queue</b>, <b>{newJob}</b> could wait in line and start the moment <b>{current.jobData.cargoType}</b> is done. Or replace it now and lose its progress.",
+                        "REPLACE", "KEEP CURRENT", replace,
+                        $"GET JOB QUEUE <sprite=0>{NumberFormat.Compact(queueUpgrade.CostAtLevel(0))}", OpenQueueStore));
+                    return;
+                }
+
                 ShowConfirm("JOB IN PROGRESS",
-                    $"You're already hauling <b>{current.jobData.cargoType}</b>. It's at {current.jobData.steps - current.stepsLeft:N0} / {current.jobData.steps:N0} steps.\n\nReplace it with <b>{newJob}</b>? The current job and its progress will be lost.{queueLine}",
-                    "REPLACE", "KEEP CURRENT",
-                    () =>
-                    {
-                        if (JobManager.instance.activeJob != current) return;
-                        JobManager.instance.RemoveQueued();
-                        AbandonActiveJob();
-                        take();
-                    });
+                    $"{progress}\n\nReplace it with <b>{newJob}</b>? The current job and its progress will be lost.{queueLine}",
+                    "REPLACE", "KEEP CURRENT", replace);
                 return;
         }
     }

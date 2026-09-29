@@ -237,6 +237,21 @@ public class JobManager : MonoSingleton<JobManager>
 
     public bool QueueFull => QueueSlots > 0 && queuedJob != null;
 
+    /// <summary>The Job Queue upgrade asset (null if the project has none).</summary>
+    public UpgradeData QueueUpgrade =>
+        Array.Find(upgradeManager.upgrades, u => u.upgradeEffects.Length > 0 && u.upgradeEffects[0].type == UpgradeType.QueueSlots);
+
+    /// <summary>Worth advertising the queue: it's unlocked but not owned, and a regular job is running.</summary>
+    public bool CanPromoteQueue
+    {
+        get
+        {
+            var upgrade = QueueUpgrade;
+            return upgrade != null && QueueSlots == 0 && ProgressionManager.instance.IsUnlocked(upgrade) &&
+                   activeJob != null && activeJob.IsRunning && !ExpressJobManager.instance.HasJob;
+        }
+    }
+
     /// <summary>Queue a job behind the running one. Fuel is paid by the caller; the deadline starts now.</summary>
     public bool QueueJob(JobData job)
     {
