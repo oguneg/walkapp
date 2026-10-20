@@ -426,6 +426,28 @@ public class JobManager : MonoSingleton<JobManager>
         return result;
     }
 
+    /// <summary>
+    /// Real walked steps needed to cover <paramref name="need"/> job steps at the current burn rate, given
+    /// <paramref name="bank"/> banked steps (reduced by what the burn would spend). Used to tell the background
+    /// step watch how far a job is from done before the app closes.
+    /// </summary>
+    public long WalkedStepsToFinish(long need, ref long bank)
+    {
+        if (need <= 0) return 0;
+        double extraPerStep = BurnRate - 1.0;
+        double costPerExtra = 1.0 + BurnLoss(BurnRate);
+        if (extraPerStep <= 0 || bank <= 0) return need;
+
+        long boostable = (long)Math.Floor(bank / (extraPerStep * costPerExtra));
+        long toFinishBoosted = (long)Math.Ceiling(need / (1.0 + extraPerStep));
+        long walked = boostable >= toFinishBoosted
+            ? toFinishBoosted
+            : boostable + (need - (long)Math.Floor(boostable * (1.0 + extraPerStep)));
+        long extra = Math.Min(need - walked, (long)Math.Floor(Math.Min(walked, boostable) * extraPerStep));
+        bank = Math.Max(0, bank - (long)Math.Ceiling(extra * costPerExtra - 1e-4));
+        return walked;
+    }
+
     /// <summary>Moves the running job with up to <paramref name="walkedAvailable"/> walked steps plus the bank burn they pull.</summary>
     private StepAllocation ApplyToJob(long walkedAvailable)
     {
