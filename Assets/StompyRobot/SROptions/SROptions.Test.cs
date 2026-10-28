@@ -74,6 +74,18 @@ public partial class SROptions
         StepManager.instance.DebugSimulateAway(10000, 180);
     }
 
+    [Category("Journey")]
+    public void ResetRoadTrip()
+    {
+        JourneyManager.instance.DebugReset();
+    }
+
+    [Category("Journey")]
+    public void Walk20000Steps()
+    {
+        StepManager.instance.DebugWalk(20000);
+    }
+
     [Category("Progression")]
     public void ResetToLevel1()
     {

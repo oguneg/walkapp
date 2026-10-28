@@ -177,6 +177,7 @@ public class StepManager : MonoSingleton<StepManager>
         JobManager.instance.AllocateSteps(steps);
         ExpressJobManager.instance.OnLiveSteps(steps);
         DailyBonusManager.instance.OnLiveSteps(steps);
+        JourneyManager.instance.OnWalked(steps);
         UpdateGUI();
     }
 
@@ -324,6 +325,7 @@ public class StepManager : MonoSingleton<StepManager>
         {
             ExpressJobManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
             DailyBonusManager.instance.OnOfflineSteps(steps, fromUtc, toUtc);
+            JourneyManager.instance.OnWalked(steps);
         }
 
         UpdateGUI();

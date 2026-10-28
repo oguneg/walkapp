@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa551a5733b62e048910480c622dc934, type: 3}
+  m_Name: Journey
+  m_EditorClassIdentifier: 
+  coinsPerLegStep: 0.1
+  routes:
+  - id: e20-sto-got
+    name: Stockholm to Gothenburg
+    stepsToComplete: 200000
+    completionReward: 10000
+    stops:
+    - name: Stockholm
+      km: 0
+      fact: "Built on 14 islands where Lake M\xE4laren meets the Baltic Sea. Your
+        trip starts here."
+    - name: "S\xF6dert\xE4lje"
+      km: 35
+      fact: Home of Scania, one of the world's big truck makers.
+    - name: "Str\xE4ngn\xE4s"
+      km: 90
+      fact: One of Sweden's oldest towns, with a cathedral from the 1200s.
+    - name: Eskilstuna
+      km: 115
+      fact: Once known as Sweden's steel town, famous for its smiths and cutlery.
+    - name: Arboga
+      km: 160
+      fact: The meeting held here in 1435 is often called Sweden's first parliament.
+    - name: "\xD6rebro"
+      km: 200
+      fact: A castle stands on a small island in the river, right in the city centre.
+    - name: "Lax\xE5"
+      km: 245
+      fact: 'The name means salmon river: lax is Swedish for salmon.'
+    - name: Hova
+      km: 275
+      fact: Every summer it turns medieval for its knight week, Riddarveckan.
+    - name: Mariestad
+      km: 315
+      fact: "On the shore of V\xE4nern, the largest lake in the European Union."
+    - name: Skara
+      km: 350
+      fact: One of Sweden's oldest bishoprics, with roots in the early 1000s.
+    - name: Vara
+      km: 380
+      fact: "A farming town on the wide, flat plains of V\xE4sterg\xF6tland."
+    - name: "Alings\xE5s"
+      km: 425
+      fact: 'Calls itself Sweden''s fika capital: coffee and a pastry, every day.'
+    - name: Gothenburg
+      km: 470
+      fact: Scandinavia's biggest port, and the home of Volvo.
+  - id: e6-got-cph
+    name: Gothenburg to Copenhagen
+    stepsToComplete: 200000
+    completionReward: 12000
+    stops:
+    - name: Gothenburg
+      km: 0
+      fact: 'Back on the road: the west coast and Denmark lie ahead.'
+    - name: Kungsbacka
+      km: 30
+      fact: A coastal town at the head of the Kungsbacka fjord.
+    - name: Varberg
+      km: 75
+      fact: Its fortress has guarded the harbour since the late 1200s.
+    - name: Falkenberg
+      km: 105
+      fact: "The \xC4tran river here is famous for its salmon fishing."
+    - name: Halmstad
+      km: 145
+      fact: "Long sandy beaches like Tyl\xF6sand make it a summer favourite."
+    - name: Helsingborg
+      km: 215
+      fact: Only about 4 km of water separates it from Denmark.
+    - name: Lund
+      km: 265
+      fact: A university town since 1666.
+    - name: "Malm\xF6"
+      km: 285
+      fact: Its Turning Torso was the tallest building in Scandinavia when it opened
+        in 2005.
+    - name: Copenhagen
+      km: 315
+      fact: "Reached over the \xD6resund link: part bridge, part tunnel under the
+        sea."
