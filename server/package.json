@@ -1,0 +1,13 @@
+{
+  "name": "walkapp-server",
+  "private": true,
+  "description": "Firebase backend for Walkapp (accounts and convoys). 'demo-walkapp' runs fully offline in the emulator.",
+  "scripts": {
+    "emulators": "firebase emulators:start --project demo-walkapp",
+    "test": "npm --prefix functions test && firebase emulators:exec --project demo-walkapp \"node --test test/api.test.js\"",
+    "deploy": "firebase deploy --only functions,firestore:rules"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.29.0"
+  }
+}
