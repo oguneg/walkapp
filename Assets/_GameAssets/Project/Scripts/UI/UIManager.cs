@@ -118,6 +118,8 @@ public class UIManager : MonoSingleton<UIManager>
         SetTabUnlocked(TabType.Upgrades, progression.IsUnlocked(Feature.UpgradesTab), announce);
         SetTabUnlocked(TabType.Stats, progression.IsUnlocked(Feature.DailyStars), announce);
         SetTabUnlocked(TabType.Fleet, progression.IsUnlocked(Feature.FleetTab), announce);
+        if ((int)TabType.Convoy < tabButtons.Length)
+            SetTabUnlocked(TabType.Convoy, progression.IsUnlocked(Feature.Convoy) && BackendConfig.Instance.IsConfigured, announce);
         RefreshExpress();
     }
 

@@ -12,7 +12,8 @@ public enum Feature
     Express,
     BurnRate,
     FleetTab,
-    LongJobs
+    LongJobs,
+    Convoy      // Convoy tab: walk together with friends (online)
 }
 
 /// <summary>
@@ -41,6 +42,7 @@ public class ProgressionManager : MonoSingleton<ProgressionManager>
         new Unlock { feature = Feature.BurnRate, level = 6, title = "Burn rate", description = "Choose how fast your banked steps push your job." },
         new Unlock { feature = Feature.FleetTab, level = 7, title = "Fleet", description = "Buy bigger trucks for better pay and cheaper fuel." },
         new Unlock { feature = Feature.LongJobs, level = 9, title = "Long hauls", description = "Week-long jobs with big pay and a relaxed pace." },
+        new Unlock { feature = Feature.Convoy, level = 3, title = "Convoys", description = "Team up with friends and walk toward weekly and monthly goals together." },
     };
 
     /// <summary>Something was unlocked (level up) or locked again (debug level reset).</summary>

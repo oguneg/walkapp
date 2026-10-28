@@ -29,6 +29,26 @@ public static class SaveSystem
         PlayerPrefs.Save();
     }
 
+    private static string ResetFlagPath => System.IO.Path.Combine(Application.persistentDataPath, "reset-on-launch");
+
+    /// <summary>
+    /// Wipe all progress on this phone. Applied at the next launch, before anything loads: until the game closes, the
+    /// running managers would just write their state back.
+    /// </summary>
+    public static void ResetOnNextLaunch()
+    {
+        System.IO.File.WriteAllText(ResetFlagPath, DateTime.UtcNow.ToString("o"));
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void ApplyPendingReset()
+    {
+        if (!System.IO.File.Exists(ResetFlagPath)) return;
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+        System.IO.File.Delete(ResetFlagPath);
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void StartRunner()
     {
